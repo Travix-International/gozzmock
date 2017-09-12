@@ -4,7 +4,6 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
@@ -42,7 +41,6 @@ func HandlerRemoveExpectation(w http.ResponseWriter, r *http.Request) {
 		fLog.Panic().Msgf("Wrong method %s", r.Method)
 		return
 	}
-	defer r.Body.Close()
 
 	requestBody := ExpectationRemove{}
 	bodyDecoder := json.NewDecoder(r.Body)
@@ -51,6 +49,7 @@ func HandlerRemoveExpectation(w http.ResponseWriter, r *http.Request) {
 		fLog.Panic().Err(err)
 		return
 	}
+	defer r.Body.Close()
 
 	var exps = ControllerRemoveExpectation(requestBody.Key, nil)
 	expsjson, err := json.Marshal(exps)
@@ -133,23 +132,29 @@ func generateResponseToResponseWriter(w http.ResponseWriter, req *ExpectationReq
 }
 
 func readResponseBody(resp *http.Response) ([]byte, error) {
-	var reader io.ReadCloser
+	var body []byte
+	var err error
 	if resp.Header.Get("Content-Encoding") == "gzip" {
 		reader, err := gzip.NewReader(resp.Body)
-		defer reader.Close()
 		if err != nil {
 			return nil, err
 		}
+
+		body, err = ioutil.ReadAll(reader)
+		if err != nil {
+			return nil, err
+		}
+		defer reader.Close()
 	} else {
-		reader = resp.Body
+
+		body, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
 	}
 
-	body, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return nil, err
-	}
-
-	return body, nil
+	return body, err
 }
 
 // LogRequest dumps http request and writes content to log
