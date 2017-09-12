@@ -222,5 +222,4 @@ func TestControllerControllerCreateHTTPRequestHostRewrite(t *testing.T) {
 	assert.NotNil(t, httpReq)
 	assert.Equal(t, "fwd_host", httpReq.Host)
 	assert.Equal(t, fmt.Sprintf("%s://%s%s", expFwd.Scheme, expFwd.Host, expReq.Path), httpReq.URL.String())
-	assert.Equal(t, "fwd_host", httpReq.Header.Get("Host"))
 }

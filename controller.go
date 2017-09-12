@@ -183,8 +183,9 @@ func ControllerCreateHTTPRequest(req *ExpectationRequest, fwd *ExpectationForwar
 			if name == "Host" {
 				fLog.Debug().Msgf("Set host to %s in request", value)
 				httpReq.Host = value
+			} else {
+				httpReq.Header.Set(name, value)
 			}
-			httpReq.Header.Set(name, value)
 		}
 	}
 

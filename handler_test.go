@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -82,6 +83,7 @@ func TestHandlerAddAndRemoveExpectation(t *testing.T) {
 func TestHandlerAddTwoExpectations(t *testing.T) {
 	handlerDefault := http.HandlerFunc(HandlerDefault)
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		LogRequest(r)
 		w.Write([]byte("response from test server"))
 	}))
 	defer testServer.Close()
@@ -175,4 +177,33 @@ func TestHandlerStatus(t *testing.T) {
 	handlerStatus.ServeHTTP(httpTestResponseRecorder, req)
 	assert.Equal(t, http.StatusOK, httpTestResponseRecorder.Code)
 	assert.Contains(t, "gozzmock status is OK", httpTestResponseRecorder.Body.String())
+}
+
+func TestHandlerForwardValidatrHeaders(t *testing.T) {
+	handlerDefault := http.HandlerFunc(HandlerDefault)
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(fmt.Sprint(r.Host)))
+	}))
+	defer testServer.Close()
+	testServerURL, err := url.Parse(testServer.URL)
+	if err != nil {
+		panic(err)
+	}
+
+	addExpectation(t, Expectation{
+		Key:      "forward",
+		Forward:  &ExpectationForward{Scheme: testServerURL.Scheme, Host: testServerURL.Host, Headers: &Headers{"Host": "fwd_host"}},
+		Priority: 0})
+
+	// do request for forward
+	req, err := http.NewRequest("POST", "/forward", bytes.NewBuffer([]byte("forward body")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Host = "reqest_host"
+
+	httpTestResponseRecorder := httptest.NewRecorder()
+	handlerDefault.ServeHTTP(httpTestResponseRecorder, req)
+	assert.Equal(t, http.StatusOK, httpTestResponseRecorder.Code)
+	assert.Equal(t, "fwd_host", httpTestResponseRecorder.Body.String())
 }
