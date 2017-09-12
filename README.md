@@ -98,8 +98,7 @@ response from gozzmock
 ```
 
 
-# Specification
-This part describes structure of expectations
+# Structure of expectations
 
 # Root level 
 * key - unique identifier for message. If another expectation is added with same key, original will be replaced
@@ -133,3 +132,10 @@ Structure of "response" block
 * path - path, including query (?) and fragments (#) 
 * body - response body
 * headers - headers in response
+
+
+# Endpoints
+* /gozzmock/status - status and readiness endpoint
+* /gozzmock/add_expectation - add or update an expectation
+* /gozzmock/remove_expectation - remove expectation by key
+* /gozzmock/get_expectations - get list of all stored expectations
