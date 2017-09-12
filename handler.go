@@ -139,21 +139,15 @@ func readResponseBody(resp *http.Response) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		body, err = ioutil.ReadAll(reader)
-		if err != nil {
-			return nil, err
-		}
 		defer reader.Close()
+		body, err = ioutil.ReadAll(reader)
 	} else {
-
-		body, err = ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
 		defer resp.Body.Close()
+		body, err = ioutil.ReadAll(resp.Body)
 	}
-
+	if err != nil {
+		return nil, err
+	}
 	return body, err
 }
 
