@@ -170,6 +170,8 @@ func doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
 		return
 	}
 
+	LogRequest(httpReq)
+
 	httpClient := &http.Client{}
 
 	resp, err := httpClient.Do(httpReq)
