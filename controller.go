@@ -180,6 +180,9 @@ func ControllerCreateHTTPRequest(req *ExpectationRequest, fwd *ExpectationForwar
 
 	if fwd.Headers != nil {
 		for name, value := range *fwd.Headers {
+			if name == "Host" {
+				httpReq.Host = value
+			}
 			httpReq.Header.Set(name, value)
 		}
 	}

@@ -214,3 +214,13 @@ func TestControllerControllerCreateHTTPRequestWithHeaders(t *testing.T) {
 	assert.Equal(t, "hv_fwd", httpReq.Header.Get("h_req"))
 	assert.Equal(t, "hv_fwd", httpReq.Header.Get("h_fwd"))
 }
+
+func TestControllerControllerCreateHTTPRequestHostRewrite(t *testing.T) {
+	expReq := &ExpectationRequest{Method: "GET", Path: "/request"}
+	expFwd := &ExpectationForward{Scheme: "https", Host: "localhost_fwd", Headers: &Headers{"Host": "fwd_host"}}
+	httpReq := ControllerCreateHTTPRequest(expReq, expFwd)
+	assert.NotNil(t, httpReq)
+	assert.Equal(t, "fwd_host", httpReq.Host)
+	assert.Equal(t, fmt.Sprintf("%s://%s%s", expFwd.Scheme, expFwd.Host, expReq.Path), httpReq.URL.String())
+	assert.Equal(t, "fwd_host", httpReq.Header.Get("Host"))
+}
