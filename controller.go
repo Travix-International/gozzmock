@@ -108,33 +108,33 @@ func ControllerRequestPassesFilter(req *ExpectationRequest, storedExpectation *E
 	}
 
 	if len(storedExpectation.Method) > 0 && storedExpectation.Method != req.Method {
-		fLog.Info().Msgf("method %s should be %s", req.Method, storedExpectation.Method)
+		fLog.Debug().Msgf("method %s should be %s", req.Method, storedExpectation.Method)
 		return false
 	}
 
 	if len(storedExpectation.Path) > 0 && !ControllerStringPassesFilter(req.Path, storedExpectation.Path) {
-		fLog.Info().Msgf("path %s doesn't pass filter %s", req.Path, storedExpectation.Path)
+		fLog.Debug().Msgf("path %s doesn't pass filter %s", req.Path, storedExpectation.Path)
 		return false
 	}
 
 	if len(storedExpectation.Body) > 0 && !ControllerStringPassesFilter(req.Body, storedExpectation.Body) {
-		fLog.Info().Msgf("body %s doesn't pass filter %s", req.Body, storedExpectation.Body)
+		fLog.Debug().Msgf("body %s doesn't pass filter %s", req.Body, storedExpectation.Body)
 		return false
 	}
 
 	if storedExpectation.Headers != nil {
 		if req.Headers == nil {
-			fLog.Info().Msgf("Request is expected to contain headers")
+			fLog.Debug().Msgf("Request is expected to contain headers")
 			return false
 		}
 		for storedHeaderName, storedHeaderValue := range *storedExpectation.Headers {
 			value, ok := (*req.Headers)[storedHeaderName]
 			if !ok {
-				fLog.Info().Msgf("No header %s in the request headers %v", storedHeaderName, req.Headers)
+				fLog.Debug().Msgf("No header %s in the request headers %v", storedHeaderName, req.Headers)
 				return false
 			}
 			if !ControllerStringPassesFilter(value, storedHeaderValue) {
-				fLog.Info().Msgf("header %s:%s has been rejected. Expected header value %s", storedHeaderName, value, storedHeaderValue)
+				fLog.Debug().Msgf("header %s:%s has been rejected. Expected header value %s", storedHeaderName, value, storedHeaderValue)
 				return false
 			}
 		}
