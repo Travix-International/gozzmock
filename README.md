@@ -12,6 +12,9 @@ https://hub.docker.com/r/travix/gozzmock/
 Travix uses gozzmock to avoid dependencies on 3rd party services at test environment.
 Gozzmock is a "transparent" mock and fully manageable trow API calls. Transparency means, some calls can be mocked, other calls will be send to real endpoint. 
 
+Package manager: [dep](https://github.com/golang/dep)]
+
+
 # Install
 ```
  docker pull travix/gozzmock
@@ -59,7 +62,6 @@ returns
 }
 ```
 
-
 Add expectation with response:
 ```json
 {
@@ -82,7 +84,7 @@ Add expectation with response:
 ```
 
 ```bash
-curl -d '{"key":"responseExpectation","request":{"method":"GET","path":"mocked"},"response":{"body":"response from gozzmock","headers":[{"Content-Type":"text/plain; charset=utf-8"}],"httpcode":200},"priority":1}'-X POST http://192.168.99.100:8080/gozzmock/add_expectation
+curl -d '{"key":"responseExpectation","request":{"method":"GET","path":"mocked"},"response":{"body":"response from gozzmock","headers":[{"Content-Type":"text/plain; charset=utf-8"}],"httpcode":200},"priority":1}' -X POST http://192.168.99.100:8080/gozzmock/add_expectation
 ```
 
 Send request with "mocked" in path:
@@ -95,6 +97,27 @@ curl http://192.168.99.100:8080/user/mocked
 For all those request response will be from expectation:
 ```
 response from gozzmock
+```
+
+To remove expectation, send request to /gozzmock/remove_expectation with structure:
+```json
+{
+    "key": "responseExpectation"
+}
+```
+
+```bash
+curl -d '{"key":"responseExpectation"}' -X POST http://192.168.99.100:8080/gozzmock/remove_expectation
+```
+
+
+# Arguments
+*loglevel* - log level. Values: debug, info, warn, error, fatal, panic. Default: debug
+*expectations* - array of expectations is json format. Default: empty. It is used to load default/forward expectations when appication starts.
+
+# Example
+```
+docker run -it -p8080:8080 travix/gozzmock --expectations="[{\"key\": \"k1\"},{\"key\": \"k2\"}]" --loglevel=info
 ```
 
 
