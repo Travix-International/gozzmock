@@ -12,7 +12,7 @@ https://hub.docker.com/r/travix/gozzmock/
 Travix uses gozzmock to avoid dependencies on 3rd party services at test environment.
 Gozzmock is a "transparent" mock and fully manageable trow API calls. Transparency means, some calls can be mocked, other calls will be send to real endpoint. 
 
-Package manager: [dep](https://github.com/golang/dep)]
+Package manager: [dep](https://github.com/golang/dep)
 
 
 # Install
