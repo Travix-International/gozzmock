@@ -89,13 +89,17 @@ func HandlerDefault(w http.ResponseWriter, r *http.Request) {
 }
 
 func uploadResponseToResponseWriter(w http.ResponseWriter, resp *ExpectationResponse) {
-	w.WriteHeader(resp.HTTPCode)
-	w.Write([]byte(resp.Body))
+	// NOTE
+	// Changing the header map after a call to WriteHeader (or
+	// Write) has no effect unless the modified headers are
+	// trailers.
 	if resp.Headers != nil {
 		for name, value := range *resp.Headers {
 			w.Header().Set(name, value)
 		}
 	}
+	w.WriteHeader(resp.HTTPCode)
+	w.Write([]byte(resp.Body))
 }
 
 func generateResponseToResponseWriter(w http.ResponseWriter, req *ExpectationRequest) {
@@ -188,11 +192,14 @@ func doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
 
 	fLog.Debug().Str("messagetype", "ResponseBody").Msg(string(body))
 
-	w.WriteHeader(resp.StatusCode)
-	w.Write(body)
-
+	// NOTE
+	// Changing the header map after a call to WriteHeader (or
+	// Write) has no effect unless the modified headers are
+	// trailers.
 	headers := *ControllerTranslateHTTPHeadersToExpHeaders(resp.Header)
 	for name, value := range headers {
 		w.Header().Set(name, value)
 	}
+	w.WriteHeader(resp.StatusCode)
+	w.Write(body)
 }
