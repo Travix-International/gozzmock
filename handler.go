@@ -192,6 +192,12 @@ func doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
 
 	fLog.Debug().Str("messagetype", "ResponseBody").Msg(string(body))
 
+	// if the response body was compressed, gozzmock re-sends uncompressed body
+	if resp.Header.Get("Content-Encoding") == "gzip" {
+		resp.Header.Del("Content-Encoding")
+		resp.Header.Del("Content-Length")
+	}
+
 	// NOTE
 	// Changing the header map after a call to WriteHeader (or
 	// Write) has no effect unless the modified headers are
