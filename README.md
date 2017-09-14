@@ -3,7 +3,10 @@ Mock server in go!
 
 Inspired by http://www.mock-server.com/
 
-[![Build Status](https://travis-ci.org/Travix-International/gozzmock.svg?branch=master)](https://travis-ci.org/Travix-International/gozzmock) [![Coverage Status](https://coveralls.io/repos/github/Travix-International/gozzmock/badge.svg?branch=master)](https://coveralls.io/github/Travix-International/gozzmock?branch=master) [![License](https://img.shields.io/github/license/Travix-International/gozzmock.svg)](https://github.com/Travix-International/gozzmock/blob/master/LICENSE)
+[![Build Status](https://travis-ci.org/Travix-International/gozzmock.svg?branch=master)](https://travis-ci.org/Travix-International/gozzmock)
+[![Coverage Status](https://coveralls.io/repos/github/Travix-International/gozzmock/badge.svg?branch=master)](https://coveralls.io/github/Travix-International/gozzmock?branch=master)
+[![License](https://img.shields.io/github/license/Travix-International/gozzmock.svg)](https://github.com/Travix-International/gozzmock/blob/master/LICENSE)
+[![Go Report](https://goreportcard.com/badge/github.com/Travix-International/gozzmock)] (https://goreportcard.com/report/github.com/Travix-International/gozzmock)
 
 # Docker Hub
 https://hub.docker.com/r/travix/gozzmock/

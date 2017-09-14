@@ -59,7 +59,7 @@ func (exps ExpectationsInt) Len() int           { return len(exps) }
 func (exps ExpectationsInt) Swap(i, j int)      { exps[i], exps[j] = exps[j], exps[i] }
 func (exps ExpectationsInt) Less(i, j int) bool { return exps[i].Priority > exps[j].Priority }
 
-// ExpectationFromReadCloser decodes readCloser to expectaion
+// ExpectationFromReadCloser decodes readCloser to expectation
 func ExpectationFromReadCloser(readCloser io.ReadCloser) Expectation {
 	fLog := log.With().Str("function", "ExpectationFromReadCloser").Logger()
 
@@ -75,7 +75,7 @@ func ExpectationFromReadCloser(readCloser io.ReadCloser) Expectation {
 	return exp
 }
 
-// ExpectationsFromString decodes string with array of expectations to array of expectaion objects
+// ExpectationsFromString decodes string with array of expectations to array of expectation objects
 func ExpectationsFromString(str string) []Expectation {
 	fLog := log.With().Str("function", "ExpectationsFromString").Logger()
 
