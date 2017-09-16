@@ -1,14 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -18,6 +21,7 @@ func HandlerAddExpectation(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != "POST" {
 		fLog.Panic().Msgf("Wrong method %s", r.Method)
+		reportError(w)
 		return
 	}
 
@@ -28,6 +32,7 @@ func HandlerAddExpectation(w http.ResponseWriter, r *http.Request) {
 	expsjson, err := json.Marshal(exps)
 	if err != nil {
 		fLog.Panic().Err(err)
+		reportError(w)
 		return
 	}
 	w.Write(expsjson)
@@ -39,6 +44,7 @@ func HandlerRemoveExpectation(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != "POST" {
 		fLog.Panic().Msgf("Wrong method %s", r.Method)
+		reportError(w)
 		return
 	}
 
@@ -47,6 +53,7 @@ func HandlerRemoveExpectation(w http.ResponseWriter, r *http.Request) {
 	err := bodyDecoder.Decode(&requestBody)
 	if err != nil {
 		fLog.Panic().Err(err)
+		reportError(w)
 		return
 	}
 	defer r.Body.Close()
@@ -55,6 +62,7 @@ func HandlerRemoveExpectation(w http.ResponseWriter, r *http.Request) {
 	expsjson, err := json.Marshal(exps)
 	if err != nil {
 		fLog.Panic().Err(err)
+		reportError(w)
 		return
 	}
 	w.Write(expsjson)
@@ -66,6 +74,7 @@ func HandlerGetExpectations(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != "GET" {
 		fLog.Panic().Msgf("Wrong method %s", r.Method)
+		reportError(w)
 		return
 	}
 
@@ -73,6 +82,7 @@ func HandlerGetExpectations(w http.ResponseWriter, r *http.Request) {
 	expsjson, err := json.Marshal(exps)
 	if err != nil {
 		fLog.Panic().Err(err)
+		reportError(w)
 		return
 	}
 	fmt.Fprint(w, string(expsjson))
@@ -85,10 +95,10 @@ func HandlerStatus(w http.ResponseWriter, r *http.Request) {
 
 // HandlerDefault handler is an entry point for all incoming requests
 func HandlerDefault(w http.ResponseWriter, r *http.Request) {
-	generateResponseToResponseWriter(w, ControllerTranslateRequestToExpectation(r))
+	generateResponse(w, ControllerTranslateRequestToExpectation(r))
 }
 
-func uploadResponseToResponseWriter(w http.ResponseWriter, resp *ExpectationResponse) {
+func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationResponse) {
 	// NOTE
 	// Changing the header map after a call to WriteHeader (or
 	// Write) has no effect unless the modified headers are
@@ -102,7 +112,7 @@ func uploadResponseToResponseWriter(w http.ResponseWriter, resp *ExpectationResp
 	w.Write([]byte(resp.Body))
 }
 
-func generateResponseToResponseWriter(w http.ResponseWriter, req *ExpectationRequest) {
+func generateResponse(w http.ResponseWriter, req *ExpectationRequest) {
 	fLog := log.With().Str("function", "generateResponseToResponseWriter").Logger()
 
 	storedExpectations := ControllerGetExpectations(nil)
@@ -118,7 +128,7 @@ func generateResponseToResponseWriter(w http.ResponseWriter, req *ExpectationReq
 
 		if exp.Response != nil {
 			fLog.Info().Str("key", exp.Key).Msg("Apply response expectation")
-			uploadResponseToResponseWriter(w, exp.Response)
+			createResponseFromExpectation(w, exp.Response)
 			return
 		}
 
@@ -135,24 +145,26 @@ func generateResponseToResponseWriter(w http.ResponseWriter, req *ExpectationReq
 	w.Write([]byte("No expectations in gozzmock for request!"))
 }
 
-func readResponseBody(resp *http.Response) ([]byte, error) {
-	var body []byte
-	var err error
-	if resp.Header.Get("Content-Encoding") == "gzip" {
-		reader, err := gzip.NewReader(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-		defer reader.Close()
-		body, err = ioutil.ReadAll(reader)
-	} else {
-		defer resp.Body.Close()
-		body, err = ioutil.ReadAll(resp.Body)
-	}
+func readCompressed(body []byte) ([]byte, error) {
+	reader, err := gzip.NewReader(bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
-	return body, err
+	defer reader.Close()
+	return ioutil.ReadAll(reader)
+}
+
+func logResponseBody(responseHeader http.Header, body []byte, fLog zerolog.Logger) error {
+	if responseHeader.Get("Content-Encoding") == "gzip" {
+		var err error
+		body, err = readCompressed(body)
+		if err != nil {
+			return err
+		}
+	}
+
+	fLog.Debug().Str("messagetype", "ResponseBody").Msg(string(body))
+	return nil
 }
 
 // LogRequest dumps http request and writes content to log
@@ -166,11 +178,16 @@ func LogRequest(req *http.Request) {
 	fLog.Debug().Str("messagetype", "Request").Msg(string(reqDumped))
 }
 
+func reportError(w http.ResponseWriter) {
+	http.Error(w, "Something went wrong", http.StatusInternalServerError)
+}
+
 func doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
 	fLog := log.With().Str("function", "doHTTPRequest").Logger()
 
 	if httpReq == nil {
 		fLog.Panic().Msg("http.Request is nil")
+		reportError(w)
 		return
 	}
 
@@ -181,21 +198,23 @@ func doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
 	resp, err := httpClient.Do(httpReq)
 	if err != nil {
 		fLog.Panic().Err(err)
+		reportError(w)
 		return
 	}
 
-	body, err := readResponseBody(resp)
+	var body bytes.Buffer
+	_, err = io.Copy(&body, resp.Body)
 	if err != nil {
 		fLog.Panic().Err(err)
+		reportError(w)
 		return
 	}
 
-	fLog.Debug().Str("messagetype", "ResponseBody").Msg(string(body))
-
-	// if the response body was compressed, gozzmock re-sends uncompressed body
-	if resp.Header.Get("Content-Encoding") == "gzip" {
-		resp.Header.Del("Content-Encoding")
-		resp.Header.Del("Content-Length")
+	err = logResponseBody(resp.Header, body.Bytes(), fLog)
+	if err != nil {
+		fLog.Panic().Err(err)
+		reportError(w)
+		return
 	}
 
 	// NOTE
@@ -207,5 +226,5 @@ func doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
 		w.Header().Set(name, value)
 	}
 	w.WriteHeader(resp.StatusCode)
-	w.Write(body)
+	w.Write(body.Bytes())
 }

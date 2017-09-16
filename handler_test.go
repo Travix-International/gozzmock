@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -206,4 +208,50 @@ func TestHandlerForwardValidatrHeaders(t *testing.T) {
 	handlerDefault.ServeHTTP(httpTestResponseRecorder, req)
 	assert.Equal(t, http.StatusOK, httpTestResponseRecorder.Code)
 	assert.Equal(t, "fwd_host", httpTestResponseRecorder.Body.String())
+}
+
+func writeCompressedMessage(w http.ResponseWriter, message []byte) {
+	w.Header().Set("Content-Encoding", "gzip")
+	gz := gzip.NewWriter(w)
+	defer gz.Close()
+	gz.Write(message)
+}
+
+func TestHandlerForwardReturnsGzip(t *testing.T) {
+	handlerDefault := http.HandlerFunc(HandlerDefault)
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeCompressedMessage(w, []byte("response from test server"))
+	}))
+	defer testServer.Close()
+	testServerURL, err := url.Parse(testServer.URL)
+	if err != nil {
+		panic(err)
+	}
+
+	addExpectation(t, Expectation{
+		Key:      "forward",
+		Forward:  &ExpectationForward{Scheme: testServerURL.Scheme, Host: testServerURL.Host},
+		Priority: 0})
+
+	// do request for forward
+	req, err := http.NewRequest("POST", "/forward", bytes.NewBuffer([]byte("forward body")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Add("Accept-Encoding", "gzip")
+
+	httpTestResponseRecorder := httptest.NewRecorder()
+	handlerDefault.ServeHTTP(httpTestResponseRecorder, req)
+	assert.Equal(t, http.StatusOK, httpTestResponseRecorder.Code)
+
+	reader, err := gzip.NewReader(httpTestResponseRecorder.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	body, err := ioutil.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, "response from test server", string(body))
 }
