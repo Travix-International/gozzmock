@@ -10,7 +10,7 @@ import (
 )
 
 func TestControllerGetExpectations_NoExpectations_ReturnEmptyList(t *testing.T) {
-	var exps = ControllerGetExpectations(Expectations{})
+	exps := ControllerGetExpectations(Expectations{})
 	assert.Empty(t, exps)
 }
 

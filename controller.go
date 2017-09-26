@@ -16,7 +16,7 @@ import (
 
 var expectations Expectations
 
-var mu sync.Mutex
+var mu sync.RWMutex
 
 // ControllerGetExpectations returns list with expectations in concurrent mode
 func ControllerGetExpectations(expsInjection Expectations) Expectations {
@@ -24,8 +24,8 @@ func ControllerGetExpectations(expsInjection Expectations) Expectations {
 		return expsInjection
 	}
 
-	mu.Lock()
-	defer mu.Unlock()
+	mu.RLock()
+	defer mu.RUnlock()
 
 	if expectations == nil {
 		expectations = make(Expectations)

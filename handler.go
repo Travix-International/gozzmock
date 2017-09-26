@@ -78,7 +78,7 @@ func HandlerGetExpectations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var exps = ControllerGetExpectations(nil)
+	exps := ControllerGetExpectations(nil)
 	expsjson, err := json.Marshal(exps)
 	if err != nil {
 		fLog.Panic().Err(err)
