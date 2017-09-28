@@ -201,6 +201,7 @@ func doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
 		reportError(w)
 		return
 	}
+	defer resp.Body.Close()
 
 	var body bytes.Buffer
 	_, err = io.Copy(&body, resp.Body)
