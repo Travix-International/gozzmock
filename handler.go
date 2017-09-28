@@ -27,7 +27,7 @@ func HandlerAddExpectation(w http.ResponseWriter, r *http.Request) {
 
 	exp := ExpectationFromReadCloser(r.Body)
 
-	var exps = ControllerAddExpectation(exp.Key, exp, nil)
+	exps := ControllerAddExpectation(exp.Key, exp, nil)
 
 	expsjson, err := json.Marshal(exps)
 	if err != nil {
@@ -58,7 +58,7 @@ func HandlerRemoveExpectation(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	var exps = ControllerRemoveExpectation(requestBody.Key, nil)
+	exps := ControllerRemoveExpectation(requestBody.Key, nil)
 	expsjson, err := json.Marshal(exps)
 	if err != nil {
 		fLog.Panic().Err(err)
