@@ -24,12 +24,11 @@ func ControllerGetExpectations(expsInjection Expectations) Expectations {
 		return expsInjection
 	}
 
-	mu.RLock()
-	defer mu.RUnlock()
-
+	mu.Lock()
 	if expectations == nil {
 		expectations = make(Expectations)
 	}
+	mu.Unlock()
 	return expectations
 }
 
@@ -37,21 +36,24 @@ func ControllerGetExpectations(expsInjection Expectations) Expectations {
 func ControllerAddExpectation(key string, exp Expectation, expsInjection Expectations) Expectations {
 	var exps = ControllerGetExpectations(expsInjection)
 	mu.Lock()
-	defer mu.Unlock()
-
 	exps[key] = exp
+	mu.Unlock()
 	return exps
 }
 
 // ControllerRemoveExpectation removes expectation with particular key
 func ControllerRemoveExpectation(key string, expsInjection Expectations) Expectations {
 	var exps = ControllerGetExpectations(expsInjection)
-	mu.Lock()
-	defer mu.Unlock()
+	mu.RLock()
+	_, ok := exps[key]
+	mu.RUnlock()
 
-	if _, ok := exps[key]; ok {
+	if ok {
+		mu.Lock()
 		delete(exps, key)
+		mu.Unlock()
 	}
+
 	return exps
 }
 
