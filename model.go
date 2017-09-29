@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -51,6 +52,12 @@ type ExpectationRemove struct {
 
 // Expectations is a map for expectations
 type Expectations map[string]Expectation
+
+// Storage is a structure with mutex to control access to expectations
+type Storage struct {
+	expectations Expectations
+	mu           sync.RWMutex
+}
 
 // ExpectationsInt is for sorting expectations by priority. the lowest priority is 0
 type ExpectationsInt map[int]Expectation

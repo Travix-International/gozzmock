@@ -9,15 +9,34 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestControllerCreateStorage_NoExpectations_ReturnsPointer(t *testing.T) {
+	storage := ControllerCreateStorage()
+	assert.Equal(t, &Storage{expectations: make(Expectations)}, storage)
+}
+
 func TestControllerGetExpectations_NoExpectations_ReturnEmptyList(t *testing.T) {
-	exps := ControllerGetExpectations(Expectations{})
-	assert.Empty(t, exps)
+	storage := ControllerCreateStorage()
+
+	exps, err := storage.GetExpectationsJSON()
+	assert.Nil(t, err)
+	assert.Equal(t, "{}", string(exps))
+}
+
+func TestControllerGetExpectationsAsStructure_NoExpectations_ReturnEmptyStructure(t *testing.T) {
+	storage := ControllerCreateStorage()
+
+	exps := storage.GetExpectationsStructure()
+	assert.Equal(t, Expectations{}, exps)
 }
 
 func TestControllerAddExpectations_NoExpectations_ReturnOneItem(t *testing.T) {
 	var exp = Expectation{Key: "k"}
 
-	var exps = ControllerAddExpectation(exp.Key, exp, Expectations{})
+	storage := ControllerCreateStorage()
+
+	storage.AddExpectation(exp.Key, exp)
+
+	exps := storage.GetExpectationsStructure()
 	assert.Contains(t, exps, exp.Key)
 	assert.Equal(t, exp, exps[exp.Key])
 }
@@ -26,10 +45,14 @@ func TestControllerAddExpectations_ExistingKey_ReturnUpdatedOneItem(t *testing.T
 	var exp1 = Expectation{Key: "k", Delay: 1}
 	var exp2 = Expectation{Key: "k", Delay: 2}
 
-	var exps = ControllerAddExpectation(exp1.Key, exp1, Expectations{})
+	storage := ControllerCreateStorage()
+
+	storage.AddExpectation(exp1.Key, exp1)
+	exps := storage.GetExpectationsStructure()
 	assert.Contains(t, exps, exp1.Key)
 
-	exps = ControllerAddExpectation(exp2.Key, exp2, exps)
+	storage.AddExpectation(exp2.Key, exp2)
+	exps = storage.GetExpectationsStructure()
 	assert.Contains(t, exps, exp2.Key)
 	assert.Equal(t, 1, len(exps))
 	assert.Equal(t, exp2, exps[exp2.Key])
@@ -39,10 +62,12 @@ func TestControllerAddExpectations_NewKey_ReturnTwoItems(t *testing.T) {
 	var exp1 = Expectation{Key: "k1", Delay: 1}
 	var exp2 = Expectation{Key: "k2", Delay: 2}
 
-	var exps = ControllerAddExpectation(exp1.Key, exp1, Expectations{})
-	assert.Contains(t, exps, exp1.Key)
+	storage := ControllerCreateStorage()
 
-	exps = ControllerAddExpectation(exp2.Key, exp2, exps)
+	storage.AddExpectation(exp1.Key, exp1)
+	storage.AddExpectation(exp2.Key, exp2)
+
+	exps := storage.GetExpectationsStructure()
 	assert.Contains(t, exps, exp2.Key)
 
 	assert.Equal(t, 2, len(exps))
@@ -53,20 +78,24 @@ func TestControllerAddExpectations_NewKey_ReturnTwoItems(t *testing.T) {
 func TestControllerRemoveExpectations_OneExpectations_ReturnEmptyList(t *testing.T) {
 	var exp = Expectation{Key: "k"}
 
-	var exps = ControllerAddExpectation(exp.Key, exp, Expectations{})
-	assert.Contains(t, exps, exp.Key)
+	storage := ControllerCreateStorage()
 
-	exps = ControllerRemoveExpectation(exp.Key, exps)
+	storage.AddExpectation(exp.Key, exp)
+	storage.RemoveExpectation(exp.Key)
+
+	exps := storage.GetExpectationsStructure()
 	assert.Empty(t, exps)
 }
 
 func TestControllerRemoveWrongKeyExpectations_OneExpectations_NotReturnError(t *testing.T) {
 	var exp = Expectation{Key: "k"}
 
-	var exps = ControllerAddExpectation(exp.Key, exp, Expectations{})
-	assert.Contains(t, exps, exp.Key)
+	storage := ControllerCreateStorage()
 
-	exps = ControllerRemoveExpectation("wrong_key", exps)
+	storage.AddExpectation(exp.Key, exp)
+	storage.RemoveExpectation("wrong_key")
+
+	exps := storage.GetExpectationsStructure()
 	assert.Contains(t, exps, exp.Key)
 }
 
@@ -185,7 +214,9 @@ func TestControllerRequestPassFilter_BodysEq_True(t *testing.T) {
 }
 
 func TestControllerSortExpectationsByPriority_EmptyExps_OK(t *testing.T) {
-	sortedMap := ControllerSortExpectationsByPriority(Expectations{})
+	storage := ControllerCreateStorage()
+
+	sortedMap := storage.GetExpectationsOrderedByPriority()
 	assert.Equal(t, 0, len(sortedMap))
 }
 
@@ -193,10 +224,14 @@ func TestControllerSortExpectationsByPriority_ListOfExpectations_OK(t *testing.T
 	exp1 := Expectation{Key: "k1", Priority: 1}
 	exp2 := Expectation{Key: "k0", Priority: 0}
 	exp3 := Expectation{Key: "k2", Priority: 2}
-	exps := ControllerAddExpectation(exp1.Key, exp1, Expectations{})
-	exps = ControllerAddExpectation(exp2.Key, exp2, exps)
-	exps = ControllerAddExpectation(exp3.Key, exp3, exps)
-	sortedMap := ControllerSortExpectationsByPriority(exps)
+
+	storage := ControllerCreateStorage()
+	storage.AddExpectation(exp1.Key, exp1)
+	storage.AddExpectation(exp2.Key, exp2)
+	storage.AddExpectation(exp3.Key, exp3)
+
+	sortedMap := storage.GetExpectationsOrderedByPriority()
+
 	assert.Equal(t, 3, len(sortedMap))
 	assert.Equal(t, "k2", sortedMap[0].Key)
 	assert.Equal(t, "k1", sortedMap[1].Key)

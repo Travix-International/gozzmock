@@ -59,14 +59,15 @@ func main() {
 
 	exps := ExpectationsFromString(initExpectations)
 
+	storage := ControllerCreateStorage()
 	for _, exp := range exps {
-		ControllerAddExpectation(exp.Key, exp, nil)
+		storage.AddExpectation(exp.Key, exp)
 	}
 
-	http.HandleFunc("/gozzmock/status", HandlerStatus)
-	httpHandleFuncWithLogs("/gozzmock/add_expectation", HandlerAddExpectation)
-	httpHandleFuncWithLogs("/gozzmock/remove_expectation", HandlerRemoveExpectation)
-	httpHandleFuncWithLogs("/gozzmock/get_expectations", HandlerGetExpectations)
-	httpHandleFuncWithLogs("/", HandlerDefault)
+	http.HandleFunc("/gozzmock/status", storage.HandlerStatus)
+	httpHandleFuncWithLogs("/gozzmock/add_expectation", storage.HandlerAddExpectation)
+	httpHandleFuncWithLogs("/gozzmock/remove_expectation", storage.HandlerRemoveExpectation)
+	httpHandleFuncWithLogs("/gozzmock/get_expectations", storage.HandlerGetExpectations)
+	httpHandleFuncWithLogs("/", storage.HandlerDefault)
 	http.ListenAndServe(":8080", nil)
 }

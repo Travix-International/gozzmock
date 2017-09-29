@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -9,52 +10,67 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/rs/zerolog/log"
 )
 
-var expectations Expectations
-
-var mu sync.RWMutex
-
-// ControllerGetExpectations returns list with expectations in concurrent mode
-func ControllerGetExpectations(expsInjection Expectations) Expectations {
-	if expsInjection != nil {
-		return expsInjection
-	}
-
-	mu.Lock()
-	if expectations == nil {
-		expectations = make(Expectations)
-	}
-	mu.Unlock()
-	return expectations
+// ControllerCreateStorage creates storage for expectations
+func ControllerCreateStorage() *Storage {
+	return &Storage{expectations: make(Expectations)}
 }
 
-// ControllerAddExpectation adds new expectation to list. If expectation with same key exists, updates it
-func ControllerAddExpectation(key string, exp Expectation, expsInjection Expectations) Expectations {
-	var exps = ControllerGetExpectations(expsInjection)
-	mu.Lock()
-	exps[key] = exp
-	mu.Unlock()
-	return exps
+// GetExpectationsJSON returns list with expectations in json format
+func (storage *Storage) GetExpectationsJSON() ([]byte, error) {
+	storage.mu.RLock()
+	defer storage.mu.RUnlock()
+	return json.Marshal(storage.expectations)
 }
 
-// ControllerRemoveExpectation removes expectation with particular key
-func ControllerRemoveExpectation(key string, expsInjection Expectations) Expectations {
-	var exps = ControllerGetExpectations(expsInjection)
-	mu.RLock()
-	_, ok := exps[key]
-	mu.RUnlock()
+// GetExpectationsStructure returns map with int keys sorted by priority DESC.
+// 0-indexed element has the highest priority
+func (storage *Storage) GetExpectationsStructure() Expectations {
+	copyExps := Expectations{}
+	storage.mu.RLock()
+	for _, exp := range storage.expectations {
+		copyExps[exp.Key] = exp
+	}
+	storage.mu.RUnlock()
+	return copyExps
+}
+
+// AddExpectation adds new expectation to list. If expectation with same key exists, updates it
+func (storage *Storage) AddExpectation(key string, exp Expectation) {
+	storage.mu.Lock()
+	storage.expectations[key] = exp
+	storage.mu.Unlock()
+}
+
+// RemoveExpectation removes expectation with particular key
+func (storage *Storage) RemoveExpectation(key string) {
+	storage.mu.RLock()
+	_, ok := storage.expectations[key]
+	storage.mu.RUnlock()
 
 	if ok {
-		mu.Lock()
-		delete(exps, key)
-		mu.Unlock()
+		storage.mu.Lock()
+		delete(storage.expectations, key)
+		storage.mu.Unlock()
 	}
+}
 
-	return exps
+// GetExpectationsOrderedByPriority returns map with int keys sorted by priority DESC.
+// 0-indexed element has the highest priority
+func (storage *Storage) GetExpectationsOrderedByPriority() ExpectationsInt {
+	listForSorting := ExpectationsInt{}
+	i := 0
+	storage.mu.RLock()
+	for _, exp := range storage.expectations {
+		listForSorting[i] = exp
+		i++
+	}
+	storage.mu.RUnlock()
+	sort.Sort(listForSorting)
+	return listForSorting
 }
 
 // ControllerTranslateHTTPHeadersToExpHeaders translates http headers into custom headers map
@@ -143,19 +159,6 @@ func ControllerRequestPassesFilter(req *ExpectationRequest, storedExpectation *E
 	}
 
 	return true
-}
-
-// ControllerSortExpectationsByPriority returns map with int keys sorted by priority DESC.
-// 0-indexed element has the highest priority
-func ControllerSortExpectationsByPriority(exps Expectations) ExpectationsInt {
-	listForSorting := ExpectationsInt{}
-	i := 0
-	for _, exp := range exps {
-		listForSorting[i] = exp
-		i++
-	}
-	sort.Sort(listForSorting)
-	return listForSorting
 }
 
 // ControllerCreateHTTPRequest creates an http request based on incoming request and forward rules

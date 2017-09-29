@@ -16,7 +16,7 @@ import (
 )
 
 // HandlerAddExpectation handler parses request and adds expectation to global expectations list
-func HandlerAddExpectation(w http.ResponseWriter, r *http.Request) {
+func (storage *Storage) HandlerAddExpectation(w http.ResponseWriter, r *http.Request) {
 	fLog := log.With().Str("function", "HandlerAddExpectation").Logger()
 
 	if r.Method != "POST" {
@@ -27,19 +27,19 @@ func HandlerAddExpectation(w http.ResponseWriter, r *http.Request) {
 
 	exp := ExpectationFromReadCloser(r.Body)
 
-	exps := ControllerAddExpectation(exp.Key, exp, nil)
+	storage.AddExpectation(exp.Key, exp)
 
-	expsjson, err := json.Marshal(exps)
+	expsJSON, err := storage.GetExpectationsJSON()
 	if err != nil {
 		fLog.Panic().Err(err)
 		reportError(w)
 		return
 	}
-	w.Write(expsjson)
+	w.Write(expsJSON)
 }
 
 // HandlerRemoveExpectation handler parses request and deletes expectation from global expectations list
-func HandlerRemoveExpectation(w http.ResponseWriter, r *http.Request) {
+func (storage *Storage) HandlerRemoveExpectation(w http.ResponseWriter, r *http.Request) {
 	fLog := log.With().Str("function", "HandlerRemoveExpectation").Logger()
 
 	if r.Method != "POST" {
@@ -58,18 +58,18 @@ func HandlerRemoveExpectation(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	exps := ControllerRemoveExpectation(requestBody.Key, nil)
-	expsjson, err := json.Marshal(exps)
+	storage.RemoveExpectation(requestBody.Key)
+	expsJSON, err := storage.GetExpectationsJSON()
 	if err != nil {
 		fLog.Panic().Err(err)
 		reportError(w)
 		return
 	}
-	w.Write(expsjson)
+	w.Write(expsJSON)
 }
 
 // HandlerGetExpectations handler parses request and returns global expectations list
-func HandlerGetExpectations(w http.ResponseWriter, r *http.Request) {
+func (storage *Storage) HandlerGetExpectations(w http.ResponseWriter, r *http.Request) {
 	fLog := log.With().Str("function", "HandlerGetExpectations").Logger()
 
 	if r.Method != "GET" {
@@ -78,24 +78,23 @@ func HandlerGetExpectations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	exps := ControllerGetExpectations(nil)
-	expsjson, err := json.Marshal(exps)
+	expsJSON, err := storage.GetExpectationsJSON()
 	if err != nil {
 		fLog.Panic().Err(err)
 		reportError(w)
 		return
 	}
-	fmt.Fprint(w, string(expsjson))
+	fmt.Fprint(w, string(expsJSON))
 }
 
 // HandlerStatus handler returns applications status
-func HandlerStatus(w http.ResponseWriter, r *http.Request) {
+func (storage *Storage) HandlerStatus(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "gozzmock status is OK")
 }
 
 // HandlerDefault handler is an entry point for all incoming requests
-func HandlerDefault(w http.ResponseWriter, r *http.Request) {
-	generateResponse(w, ControllerTranslateRequestToExpectation(r))
+func (storage *Storage) HandlerDefault(w http.ResponseWriter, r *http.Request) {
+	storage.generateResponse(w, ControllerTranslateRequestToExpectation(r))
 }
 
 func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationResponse) {
@@ -112,11 +111,10 @@ func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationRespo
 	w.Write([]byte(resp.Body))
 }
 
-func generateResponse(w http.ResponseWriter, req *ExpectationRequest) {
+func (storage *Storage) generateResponse(w http.ResponseWriter, req *ExpectationRequest) {
 	fLog := log.With().Str("function", "generateResponseToResponseWriter").Logger()
 
-	storedExpectations := ControllerGetExpectations(nil)
-	orderedStoredExpectations := ControllerSortExpectationsByPriority(storedExpectations)
+	orderedStoredExpectations := storage.GetExpectationsOrderedByPriority()
 	for i := 0; i < len(orderedStoredExpectations); i++ {
 		exp := orderedStoredExpectations[i]
 
@@ -150,7 +148,6 @@ func readCompressed(body []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer reader.Close()
 	return ioutil.ReadAll(reader)
 }
 

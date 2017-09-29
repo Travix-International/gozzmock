@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func addExpectation(t *testing.T, exp Expectation) *bytes.Buffer {
-	handlerAddExpectation := http.HandlerFunc(HandlerAddExpectation)
+func (storage *Storage) addExpectation(t *testing.T, exp Expectation) *bytes.Buffer {
+	handlerAddExpectation := http.HandlerFunc(storage.HandlerAddExpectation)
 
 	expJSON, err := json.Marshal(exp)
 	if err != nil {
@@ -34,8 +34,29 @@ func addExpectation(t *testing.T, exp Expectation) *bytes.Buffer {
 	return httpTestResponseRecorder.Body
 }
 
+func (storage *Storage) removeExpectation(t *testing.T, expKey string) *bytes.Buffer {
+	handlerAddExpectation := http.HandlerFunc(storage.HandlerRemoveExpectation)
+
+	expRemoveJSON, err := json.Marshal(ExpectationRemove{Key: expKey})
+	if err != nil {
+		panic(err)
+	}
+
+	req, err := http.NewRequest("POST", "/gozzmock/remove_expectation", bytes.NewBuffer(expRemoveJSON))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	httpTestResponseRecorder := httptest.NewRecorder()
+	handlerAddExpectation.ServeHTTP(httpTestResponseRecorder, req)
+	assert.Equal(t, http.StatusOK, httpTestResponseRecorder.Code)
+
+	return httpTestResponseRecorder.Body
+}
+
 func TestHandlerNoExpectations(t *testing.T) {
-	handlerDefault := http.HandlerFunc(HandlerDefault)
+	storage := ControllerCreateStorage()
+	handlerDefault := http.HandlerFunc(storage.HandlerDefault)
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("response from test server"))
 	}))
@@ -54,11 +75,12 @@ func TestHandlerNoExpectations(t *testing.T) {
 }
 
 func TestHandlerAddAndRemoveExpectation(t *testing.T) {
-	handlerRemoveExpectation := http.HandlerFunc(HandlerRemoveExpectation)
+	storage := ControllerCreateStorage()
+	handlerRemoveExpectation := http.HandlerFunc(storage.HandlerRemoveExpectation)
 	expectedExp := Expectation{Key: "k"}
 	expectedExps := Expectations{expectedExp.Key: expectedExp}
 
-	body := addExpectation(t, expectedExp)
+	body := storage.addExpectation(t, expectedExp)
 	expsjson, err := json.Marshal(expectedExps)
 	if err != nil {
 		panic(err)
@@ -83,7 +105,8 @@ func TestHandlerAddAndRemoveExpectation(t *testing.T) {
 }
 
 func TestHandlerAddTwoExpectations(t *testing.T) {
-	handlerDefault := http.HandlerFunc(HandlerDefault)
+	storage := ControllerCreateStorage()
+	handlerDefault := http.HandlerFunc(storage.HandlerDefault)
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		LogRequest(r)
 		w.Write([]byte("response from test server"))
@@ -94,13 +117,13 @@ func TestHandlerAddTwoExpectations(t *testing.T) {
 		panic(err)
 	}
 
-	addExpectation(t, Expectation{
+	storage.addExpectation(t, Expectation{
 		Key:      "response",
 		Request:  &ExpectationRequest{Path: "/response"},
 		Response: &ExpectationResponse{HTTPCode: http.StatusOK, Body: "response body"},
 		Priority: 1})
 
-	addExpectation(t, Expectation{
+	storage.addExpectation(t, Expectation{
 		Key:      "forward",
 		Forward:  &ExpectationForward{Scheme: testServerURL.Scheme, Host: testServerURL.Host},
 		Priority: 0})
@@ -131,7 +154,8 @@ func TestHandlerAddTwoExpectations(t *testing.T) {
 }
 
 func TestHandlerGetExpectations(t *testing.T) {
-	handlerGetExpectations := http.HandlerFunc(HandlerGetExpectations)
+	storage := ControllerCreateStorage()
+	handlerGetExpectations := http.HandlerFunc(storage.HandlerGetExpectations)
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("response from test server"))
 	}))
@@ -142,7 +166,7 @@ func TestHandlerGetExpectations(t *testing.T) {
 		Request:  &ExpectationRequest{Path: "/response"},
 		Response: &ExpectationResponse{HTTPCode: http.StatusOK, Body: "response body"},
 		Priority: 1}
-	addExpectation(t, expectation)
+	storage.addExpectation(t, expectation)
 
 	// do request for response
 	req, err := http.NewRequest("GET", "/gozzmock/get_expectations", nil)
@@ -163,7 +187,8 @@ func TestHandlerGetExpectations(t *testing.T) {
 }
 
 func TestHandlerStatus(t *testing.T) {
-	handlerStatus := http.HandlerFunc(HandlerStatus)
+	storage := ControllerCreateStorage()
+	handlerStatus := http.HandlerFunc(storage.HandlerStatus)
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("response from test server"))
 	}))
@@ -182,7 +207,8 @@ func TestHandlerStatus(t *testing.T) {
 }
 
 func TestHandlerForwardValidatrHeaders(t *testing.T) {
-	handlerDefault := http.HandlerFunc(HandlerDefault)
+	storage := ControllerCreateStorage()
+	handlerDefault := http.HandlerFunc(storage.HandlerDefault)
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprint(r.Host)))
 	}))
@@ -192,7 +218,7 @@ func TestHandlerForwardValidatrHeaders(t *testing.T) {
 		panic(err)
 	}
 
-	addExpectation(t, Expectation{
+	storage.addExpectation(t, Expectation{
 		Key:      "forward",
 		Forward:  &ExpectationForward{Scheme: testServerURL.Scheme, Host: testServerURL.Host, Headers: &Headers{"Host": "fwd_host"}},
 		Priority: 0})
@@ -218,7 +244,8 @@ func writeCompressedMessage(w http.ResponseWriter, message []byte) {
 }
 
 func TestHandlerForwardReturnsGzip(t *testing.T) {
-	handlerDefault := http.HandlerFunc(HandlerDefault)
+	storage := ControllerCreateStorage()
+	handlerDefault := http.HandlerFunc(storage.HandlerDefault)
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeCompressedMessage(w, []byte("response from test server"))
 	}))
@@ -228,7 +255,7 @@ func TestHandlerForwardReturnsGzip(t *testing.T) {
 		panic(err)
 	}
 
-	addExpectation(t, Expectation{
+	storage.addExpectation(t, Expectation{
 		Key:      "forward",
 		Forward:  &ExpectationForward{Scheme: testServerURL.Scheme, Host: testServerURL.Host},
 		Priority: 0})
