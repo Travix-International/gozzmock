@@ -15,6 +15,17 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+func (storage *Storage) writeExpectationsToResponse(w http.ResponseWriter) {
+	fLog := log.With().Str("function", "writeExpectationsToResponse").Logger()
+	expsJSON, err := storage.GetExpectationsJSON()
+	if err != nil {
+		fLog.Panic().Err(err)
+		reportError(w)
+		return
+	}
+	w.Write(expsJSON)
+}
+
 // HandlerAddExpectation handler parses request and adds expectation to global expectations list
 func (storage *Storage) HandlerAddExpectation(w http.ResponseWriter, r *http.Request) {
 	fLog := log.With().Str("function", "HandlerAddExpectation").Logger()
@@ -24,18 +35,20 @@ func (storage *Storage) HandlerAddExpectation(w http.ResponseWriter, r *http.Req
 		reportError(w)
 		return
 	}
+	defer r.Body.Close()
 
-	exp := ExpectationFromReadCloser(r.Body)
-
-	storage.AddExpectation(exp.Key, exp)
-
-	expsJSON, err := storage.GetExpectationsJSON()
+	exp := Expectation{}
+	err := ObjectFromJSON(r.Body, &exp)
 	if err != nil {
 		fLog.Panic().Err(err)
 		reportError(w)
 		return
 	}
-	w.Write(expsJSON)
+
+	expectationSetDefaultValues(&exp)
+
+	storage.AddExpectation(exp.Key, exp)
+	storage.writeExpectationsToResponse(w)
 }
 
 // HandlerRemoveExpectation handler parses request and deletes expectation from global expectations list
@@ -47,6 +60,7 @@ func (storage *Storage) HandlerRemoveExpectation(w http.ResponseWriter, r *http.
 		reportError(w)
 		return
 	}
+	defer r.Body.Close()
 
 	requestBody := ExpectationRemove{}
 	bodyDecoder := json.NewDecoder(r.Body)
@@ -56,16 +70,9 @@ func (storage *Storage) HandlerRemoveExpectation(w http.ResponseWriter, r *http.
 		reportError(w)
 		return
 	}
-	defer r.Body.Close()
 
 	storage.RemoveExpectation(requestBody.Key)
-	expsJSON, err := storage.GetExpectationsJSON()
-	if err != nil {
-		fLog.Panic().Err(err)
-		reportError(w)
-		return
-	}
-	w.Write(expsJSON)
+	storage.writeExpectationsToResponse(w)
 }
 
 // HandlerGetExpectations handler parses request and returns global expectations list
@@ -78,13 +85,7 @@ func (storage *Storage) HandlerGetExpectations(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	expsJSON, err := storage.GetExpectationsJSON()
-	if err != nil {
-		fLog.Panic().Err(err)
-		reportError(w)
-		return
-	}
-	fmt.Fprint(w, string(expsJSON))
+	storage.writeExpectationsToResponse(w)
 }
 
 // HandlerStatus handler returns applications status
@@ -94,6 +95,10 @@ func (storage *Storage) HandlerStatus(w http.ResponseWriter, r *http.Request) {
 
 // HandlerDefault handler is an entry point for all incoming requests
 func (storage *Storage) HandlerDefault(w http.ResponseWriter, r *http.Request) {
+	if r != nil && r.Body != nil {
+		defer r.Body.Close()
+	}
+
 	storage.generateResponse(w, ControllerTranslateRequestToExpectation(r))
 }
 
@@ -111,6 +116,28 @@ func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationRespo
 	w.Write([]byte(resp.Body))
 }
 
+func applyExpectation(exp Expectation, w http.ResponseWriter, req *ExpectationRequest) {
+	fLog := log.With().Str("function", "applyExpectation").Str("key", exp.Key).Logger()
+
+	if exp.Delay > 0 {
+		fLog.Info().Msg(fmt.Sprintf("Delay %v sec", exp.Delay))
+		time.Sleep(time.Second * exp.Delay)
+	}
+
+	if exp.Response != nil {
+		fLog.Info().Msg("Apply response expectation")
+		createResponseFromExpectation(w, exp.Response)
+		return
+	}
+
+	if exp.Forward != nil {
+		fLog.Debug().Msg("Apply forward expectation")
+		httpReq := ControllerCreateHTTPRequest(req, exp.Forward)
+		doHTTPRequest(w, httpReq)
+		return
+	}
+}
+
 func (storage *Storage) generateResponse(w http.ResponseWriter, req *ExpectationRequest) {
 	fLog := log.With().Str("function", "generateResponseToResponseWriter").Logger()
 
@@ -122,20 +149,8 @@ func (storage *Storage) generateResponse(w http.ResponseWriter, req *Expectation
 			continue
 		}
 
-		time.Sleep(time.Second * exp.Delay)
-
-		if exp.Response != nil {
-			fLog.Info().Str("key", exp.Key).Msg("Apply response expectation")
-			createResponseFromExpectation(w, exp.Response)
-			return
-		}
-
-		if exp.Forward != nil {
-			fLog.Info().Str("key", exp.Key).Msg("Apply forward expectation")
-			httpReq := ControllerCreateHTTPRequest(req, exp.Forward)
-			doHTTPRequest(w, httpReq)
-			return
-		}
+		applyExpectation(exp, w, req)
+		return
 	}
 	fLog.Error().Msg("No expectations in gozzmock for request!")
 
@@ -176,7 +191,7 @@ func LogRequest(req *http.Request) {
 }
 
 func reportError(w http.ResponseWriter) {
-	http.Error(w, "Something went wrong", http.StatusInternalServerError)
+	http.Error(w, "Gozzmock. Something went wrong", http.StatusInternalServerError)
 }
 
 func doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {

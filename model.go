@@ -66,20 +66,10 @@ func (exps ExpectationsInt) Len() int           { return len(exps) }
 func (exps ExpectationsInt) Swap(i, j int)      { exps[i], exps[j] = exps[j], exps[i] }
 func (exps ExpectationsInt) Less(i, j int) bool { return exps[i].Priority > exps[j].Priority }
 
-// ExpectationFromReadCloser decodes readCloser to expectation
-func ExpectationFromReadCloser(readCloser io.ReadCloser) Expectation {
-	fLog := log.With().Str("function", "ExpectationFromReadCloser").Logger()
-
-	exp := Expectation{}
-	bodyDecoder := json.NewDecoder(readCloser)
-	defer readCloser.Close()
-	err := bodyDecoder.Decode(&exp)
-	if err != nil {
-		fLog.Panic().Err(err)
-		return exp
-	}
-	expectationSetDefaultValues(&exp)
-	return exp
+// ObjectFromJSON decodes json to object
+func ObjectFromJSON(reader io.Reader, v interface{}) error {
+	bodyDecoder := json.NewDecoder(reader)
+	return bodyDecoder.Decode(v)
 }
 
 // ExpectationsFromString decodes string with array of expectations to array of expectation objects
@@ -88,8 +78,7 @@ func ExpectationsFromString(str string) []Expectation {
 
 	exps := make([]Expectation, 0)
 
-	bodyDecoder := json.NewDecoder(strings.NewReader(str))
-	err := bodyDecoder.Decode(&exps)
+	err := ObjectFromJSON(strings.NewReader(str), &exps)
 	if err != nil {
 		fLog.Panic().Err(err)
 		return exps

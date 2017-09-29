@@ -28,6 +28,8 @@ func TestExpectationsDefaultValues(t *testing.T) {
 
 func TestConvertationExpectationFromReadCloser(t *testing.T) {
 	str := "{\"key\": \"k\"}"
-	exp := ExpectationFromReadCloser(ioutil.NopCloser(strings.NewReader(str)))
+	exp := Expectation{}
+	err := ObjectFromJSON(ioutil.NopCloser(strings.NewReader(str)), &exp)
+	assert.Nil(t, err)
 	assert.Equal(t, "k", exp.Key)
 }
