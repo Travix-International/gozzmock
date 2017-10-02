@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/rs/zerolog/log"
 )
 
@@ -22,7 +24,7 @@ func (storage *Storage) writeExpectationsToResponse(w http.ResponseWriter) {
 }
 
 // HandlerAddExpectation handler parses request and adds expectation to global expectations list
-func (storage *Storage) HandlerAddExpectation(w http.ResponseWriter, r *http.Request) {
+func (context *context) HandlerAddExpectation(w http.ResponseWriter, r *http.Request) {
 	fLog := log.With().Str("function", "HandlerAddExpectation").Logger()
 
 	if r.Method != "POST" {
@@ -41,12 +43,12 @@ func (storage *Storage) HandlerAddExpectation(w http.ResponseWriter, r *http.Req
 
 	expectationSetDefaultValues(&exp)
 
-	storage.AddExpectation(exp.Key, exp)
-	storage.writeExpectationsToResponse(w)
+	context.storage.AddExpectation(exp.Key, exp)
+	context.storage.writeExpectationsToResponse(w)
 }
 
 // HandlerRemoveExpectation handler parses request and deletes expectation from global expectations list
-func (storage *Storage) HandlerRemoveExpectation(w http.ResponseWriter, r *http.Request) {
+func (context *context) HandlerRemoveExpectation(w http.ResponseWriter, r *http.Request) {
 	fLog := log.With().Str("function", "HandlerRemoveExpectation").Logger()
 
 	if r.Method != "POST" {
@@ -64,12 +66,12 @@ func (storage *Storage) HandlerRemoveExpectation(w http.ResponseWriter, r *http.
 		return
 	}
 
-	storage.RemoveExpectation(requestBody.Key)
-	storage.writeExpectationsToResponse(w)
+	context.storage.RemoveExpectation(requestBody.Key)
+	context.storage.writeExpectationsToResponse(w)
 }
 
 // HandlerGetExpectations handler parses request and returns global expectations list
-func (storage *Storage) HandlerGetExpectations(w http.ResponseWriter, r *http.Request) {
+func (context *context) HandlerGetExpectations(w http.ResponseWriter, r *http.Request) {
 	fLog := log.With().Str("function", "HandlerGetExpectations").Logger()
 
 	if r.Method != "GET" {
@@ -78,18 +80,18 @@ func (storage *Storage) HandlerGetExpectations(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	storage.writeExpectationsToResponse(w)
+	context.storage.writeExpectationsToResponse(w)
 }
 
 // HandlerStatus handler returns applications status
-func (storage *Storage) HandlerStatus(w http.ResponseWriter, r *http.Request) {
+func (context *context) HandlerStatus(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "gozzmock status is OK")
 }
 
 // HandlerDefault handler is an entry point for all incoming requests
-func (storage *Storage) HandlerDefault(w http.ResponseWriter, r *http.Request) {
+func (context *context) HandlerDefault(w http.ResponseWriter, r *http.Request) {
 
-	storage.generateResponse(w, ControllerTranslateRequestToExpectation(r))
+	context.generateResponse(w, ControllerTranslateRequestToExpectation(r))
 }
 
 func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationResponse) {
@@ -106,7 +108,7 @@ func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationRespo
 	w.Write([]byte(resp.Body))
 }
 
-func applyExpectation(exp Expectation, w http.ResponseWriter, req *ExpectationRequest) {
+func (context *context) applyExpectation(exp Expectation, w http.ResponseWriter, req *ExpectationRequest) {
 	fLog := log.With().Str("function", "applyExpectation").Str("key", exp.Key).Logger()
 
 	if exp.Delay > 0 {
@@ -123,15 +125,15 @@ func applyExpectation(exp Expectation, w http.ResponseWriter, req *ExpectationRe
 	if exp.Forward != nil {
 		fLog.Debug().Msg("Apply forward expectation")
 		httpReq := ControllerCreateHTTPRequest(req, exp.Forward)
-		doHTTPRequest(w, httpReq)
+		context.doHTTPRequest(w, httpReq)
 		return
 	}
 }
 
-func (storage *Storage) generateResponse(w http.ResponseWriter, req *ExpectationRequest) {
+func (context *context) generateResponse(w http.ResponseWriter, req *ExpectationRequest) {
 	fLog := log.With().Str("function", "generateResponseToResponseWriter").Logger()
 
-	orderedStoredExpectations := storage.GetExpectationsOrderedByPriority()
+	orderedStoredExpectations := context.storage.GetExpectationsOrderedByPriority()
 	for i := 0; i < len(orderedStoredExpectations); i++ {
 		exp := orderedStoredExpectations[i]
 
@@ -139,7 +141,7 @@ func (storage *Storage) generateResponse(w http.ResponseWriter, req *Expectation
 			continue
 		}
 
-		applyExpectation(exp, w, req)
+		context.applyExpectation(exp, w, req)
 		return
 	}
 	fLog.Error().Msg("No expectations in gozzmock for request!")
@@ -152,7 +154,7 @@ func reportError(w http.ResponseWriter) {
 	http.Error(w, "Gozzmock. Something went wrong", http.StatusInternalServerError)
 }
 
-func doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
+func (context *context) doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
 	fLog := log.With().Str("function", "doHTTPRequest").Logger()
 
 	if httpReq == nil {
@@ -161,7 +163,9 @@ func doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
 		return
 	}
 
-	dumpRequest(httpReq)
+	if context.logLevel == zerolog.DebugLevel {
+		dumpRequest(httpReq)
+	}
 
 	httpClient := &http.Client{}
 
@@ -174,7 +178,9 @@ func doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
 
 	defer resp.Body.Close()
 
-	dumpResponse(resp)
+	if context.logLevel == zerolog.DebugLevel {
+		dumpResponse(resp)
+	}
 
 	// NOTE
 	// Changing the header map after a call to WriteHeader (or

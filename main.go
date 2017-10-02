@@ -10,9 +10,17 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func httpHandleFuncHelper(pattern string, handler func(http.ResponseWriter, *http.Request)) {
+type context struct {
+	logLevel zerolog.Level
+	storage  *Storage
+}
+
+func (context *context) httpHandleFuncHelper(pattern string, handler func(http.ResponseWriter, *http.Request)) {
 	wrappedHandler := func(w http.ResponseWriter, r *http.Request) {
-		dumpRequest(r)
+		if context.logLevel == zerolog.DebugLevel {
+			dumpRequest(r)
+		}
+
 		handler(w, r)
 		if r != nil && r.Body != nil {
 			r.Body.Close()
@@ -22,7 +30,7 @@ func httpHandleFuncHelper(pattern string, handler func(http.ResponseWriter, *htt
 	http.HandleFunc(pattern, wrappedHandler)
 }
 
-func setZeroLogLevel(logLevel string) {
+func (context *context) setZeroLogLevel(logLevel string) {
 
 	selectedLevel := zerolog.DebugLevel
 
@@ -42,6 +50,7 @@ func setZeroLogLevel(logLevel string) {
 	}
 	fmt.Println("set log level:", selectedLevel)
 	zerolog.SetGlobalLevel(selectedLevel)
+	context.logLevel = selectedLevel
 	zerolog.TimestampFieldName = "timestamp"
 	log.Logger = log.With().Str("type", "gozzmock").Logger()
 
@@ -58,19 +67,20 @@ func main() {
 	fmt.Println("loglevel:", logLevel)
 	fmt.Println("tail:", flag.Args())
 
-	setZeroLogLevel(logLevel)
+	context := &context{}
+	context.setZeroLogLevel(logLevel)
 
 	exps := ExpectationsFromString(initExpectations)
 
-	storage := ControllerCreateStorage()
+	context.storage = ControllerCreateStorage()
 	for _, exp := range exps {
-		storage.AddExpectation(exp.Key, exp)
+		context.storage.AddExpectation(exp.Key, exp)
 	}
 
-	http.HandleFunc("/gozzmock/status", storage.HandlerStatus)
-	httpHandleFuncHelper("/gozzmock/add_expectation", storage.HandlerAddExpectation)
-	httpHandleFuncHelper("/gozzmock/remove_expectation", storage.HandlerRemoveExpectation)
-	httpHandleFuncHelper("/gozzmock/get_expectations", storage.HandlerGetExpectations)
-	httpHandleFuncHelper("/", storage.HandlerDefault)
+	http.HandleFunc("/gozzmock/status", context.HandlerStatus)
+	context.httpHandleFuncHelper("/gozzmock/add_expectation", context.HandlerAddExpectation)
+	context.httpHandleFuncHelper("/gozzmock/remove_expectation", context.HandlerRemoveExpectation)
+	context.httpHandleFuncHelper("/gozzmock/get_expectations", context.HandlerGetExpectations)
+	context.httpHandleFuncHelper("/", context.HandlerDefault)
 	http.ListenAndServe(":8080", nil)
 }
