@@ -10,10 +10,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func httpHandleFuncWithLogs(pattern string, handler func(http.ResponseWriter, *http.Request)) {
+func httpHandleFuncHelper(pattern string, handler func(http.ResponseWriter, *http.Request)) {
 	wrappedHandler := func(w http.ResponseWriter, r *http.Request) {
 		LogRequest(r)
 		handler(w, r)
+		if r != nil && r.Body != nil {
+			r.Body.Close()
+		}
 	}
 
 	http.HandleFunc(pattern, wrappedHandler)
@@ -65,9 +68,9 @@ func main() {
 	}
 
 	http.HandleFunc("/gozzmock/status", storage.HandlerStatus)
-	httpHandleFuncWithLogs("/gozzmock/add_expectation", storage.HandlerAddExpectation)
-	httpHandleFuncWithLogs("/gozzmock/remove_expectation", storage.HandlerRemoveExpectation)
-	httpHandleFuncWithLogs("/gozzmock/get_expectations", storage.HandlerGetExpectations)
-	httpHandleFuncWithLogs("/", storage.HandlerDefault)
+	httpHandleFuncHelper("/gozzmock/add_expectation", storage.HandlerAddExpectation)
+	httpHandleFuncHelper("/gozzmock/remove_expectation", storage.HandlerRemoveExpectation)
+	httpHandleFuncHelper("/gozzmock/get_expectations", storage.HandlerGetExpectations)
+	httpHandleFuncHelper("/", storage.HandlerDefault)
 	http.ListenAndServe(":8080", nil)
 }

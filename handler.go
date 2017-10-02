@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
@@ -35,7 +34,6 @@ func (storage *Storage) HandlerAddExpectation(w http.ResponseWriter, r *http.Req
 		reportError(w)
 		return
 	}
-	defer r.Body.Close()
 
 	exp := Expectation{}
 	err := ObjectFromJSON(r.Body, &exp)
@@ -60,7 +58,6 @@ func (storage *Storage) HandlerRemoveExpectation(w http.ResponseWriter, r *http.
 		reportError(w)
 		return
 	}
-	defer r.Body.Close()
 
 	requestBody := ExpectationRemove{}
 	bodyDecoder := json.NewDecoder(r.Body)
@@ -95,9 +92,6 @@ func (storage *Storage) HandlerStatus(w http.ResponseWriter, r *http.Request) {
 
 // HandlerDefault handler is an entry point for all incoming requests
 func (storage *Storage) HandlerDefault(w http.ResponseWriter, r *http.Request) {
-	if r != nil && r.Body != nil {
-		defer r.Body.Close()
-	}
 
 	storage.generateResponse(w, ControllerTranslateRequestToExpectation(r))
 }
@@ -215,15 +209,14 @@ func doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	var body bytes.Buffer
-	_, err = io.Copy(&body, resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fLog.Panic().Err(err)
 		reportError(w)
 		return
 	}
 
-	err = logResponseBody(resp.Header, body.Bytes(), fLog)
+	err = logResponseBody(resp.Header, body, fLog)
 	if err != nil {
 		fLog.Panic().Err(err)
 		reportError(w)
@@ -239,5 +232,5 @@ func doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
 		w.Header().Set(name, value)
 	}
 	w.WriteHeader(resp.StatusCode)
-	w.Write(body.Bytes())
+	w.Write(body)
 }
