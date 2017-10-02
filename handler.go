@@ -1,10 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
@@ -152,25 +152,23 @@ func (storage *Storage) generateResponse(w http.ResponseWriter, req *Expectation
 	w.Write([]byte("No expectations in gozzmock for request!"))
 }
 
-func readCompressed(body []byte) ([]byte, error) {
-	reader, err := gzip.NewReader(bytes.NewReader(body))
+func readCompressed(r io.Reader) ([]byte, error) {
+	reader, err := gzip.NewReader(r)
 	if err != nil {
 		return nil, err
 	}
 	return ioutil.ReadAll(reader)
 }
 
-func logResponseBody(responseHeader http.Header, body []byte, fLog zerolog.Logger) error {
+func getResponseBody(responseHeader http.Header, r io.Reader, fLog zerolog.Logger) ([]byte, error) {
+	var body []byte
+	var err error
 	if responseHeader.Get("Content-Encoding") == "gzip" {
-		var err error
-		body, err = readCompressed(body)
-		if err != nil {
-			return err
-		}
+		body, err = readCompressed(r)
+	} else {
+		body, err = ioutil.ReadAll(r)
 	}
-
-	fLog.Debug().Str("messagetype", "ResponseBody").Msg(string(body))
-	return nil
+	return body, err
 }
 
 // LogRequest dumps http request and writes content to log
@@ -207,21 +205,17 @@ func doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
 		reportError(w)
 		return
 	}
+
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	dumpedResponse, err := httputil.DumpResponse(resp, true)
 	if err != nil {
 		fLog.Panic().Err(err)
 		reportError(w)
 		return
 	}
 
-	err = logResponseBody(resp.Header, body, fLog)
-	if err != nil {
-		fLog.Panic().Err(err)
-		reportError(w)
-		return
-	}
+	fLog.Debug().Str("messagetype", "ForwardResponse").Msg(string(dumpedResponse))
 
 	// NOTE
 	// Changing the header map after a call to WriteHeader (or
@@ -232,5 +226,11 @@ func doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
 		w.Header().Set(name, value)
 	}
 	w.WriteHeader(resp.StatusCode)
-	w.Write(body)
+
+	_, err = io.Copy(w, resp.Body)
+	if err != nil {
+		fLog.Panic().Err(err)
+		reportError(w)
+		return
+	}
 }
