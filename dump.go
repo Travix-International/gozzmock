@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -83,6 +84,12 @@ func dumpCompressedResponse(resp *http.Response, body bool) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		reader, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		resp.Body = ioutil.NopCloser(reader)
 	}
 	err = resp.Write(&b)
 	if err == errNoBody {
@@ -98,7 +105,7 @@ func dumpCompressedResponse(resp *http.Response, body bool) ([]byte, error) {
 
 // dumpResponse dumps http response and writes content to log
 func dumpResponse(resp *http.Response) {
-	fLog := log.With().Str("function", "LogResponse").Logger()
+	fLog := log.With().Str("function", "dumpResponse").Logger()
 	var respDumped []byte
 	var err error
 	if resp.Header.Get("Content-Encoding") == "gzip" {
