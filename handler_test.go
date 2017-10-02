@@ -108,7 +108,7 @@ func TestHandlerAddTwoExpectations(t *testing.T) {
 	storage := ControllerCreateStorage()
 	handlerDefault := http.HandlerFunc(storage.HandlerDefault)
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		LogRequest(r)
+		dumpRequest(r)
 		w.Write([]byte("response from test server"))
 	}))
 	defer testServer.Close()

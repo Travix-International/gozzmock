@@ -1,15 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
-	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -153,85 +148,6 @@ func (storage *Storage) generateResponse(w http.ResponseWriter, req *Expectation
 	w.Write([]byte("No expectations in gozzmock for request!"))
 }
 
-// LogRequest dumps http request and writes content to log
-func LogRequest(req *http.Request) {
-	fLog := log.With().Str("function", "LogRequest").Logger()
-	reqDumped, err := httputil.DumpRequest(req, true)
-	if err != nil {
-		fLog.Panic().Err(err)
-		return
-	}
-	fLog.Debug().Str("messagetype", "Request").Msg(string(reqDumped))
-}
-
-// drainBody is copied from dump.go
-func drainBody(b io.ReadCloser) (r1, r2 io.ReadCloser, err error) {
-	if b == http.NoBody {
-		// No copying needed. Preserve the magic sentinel meaning of NoBody.
-		return http.NoBody, http.NoBody, nil
-	}
-	var buf bytes.Buffer
-	if _, err = buf.ReadFrom(b); err != nil {
-		return nil, b, err
-	}
-	if err = b.Close(); err != nil {
-		return nil, b, err
-	}
-	return ioutil.NopCloser(&buf), ioutil.NopCloser(bytes.NewReader(buf.Bytes())), nil
-}
-
-// dumpCompressedResponse is copied from dump.go
-func dumpCompressedResponse(resp *http.Response, body bool) ([]byte, error) {
-	var b bytes.Buffer
-	var err error
-	// emptyBody is an instance of empty reader.
-	var emptyBody = ioutil.NopCloser(strings.NewReader(""))
-	// errNoBody is a sentinel error value used by failureToReadBody so we
-	// can detect that the lack of body was intentional.
-	var errNoBody = errors.New("sentinel error value")
-	save := resp.Body
-	savecl := resp.ContentLength
-
-	if !body {
-		resp.Body = emptyBody
-	} else if resp.Body == nil {
-		resp.Body = emptyBody
-	} else {
-		save, resp.Body, err = drainBody(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-	}
-	err = resp.Write(&b)
-	if err == errNoBody {
-		err = nil
-	}
-	resp.Body = save
-	resp.ContentLength = savecl
-	if err != nil {
-		return nil, err
-	}
-	return b.Bytes(), nil
-}
-
-// logResponse dumps http response and writes content to log
-func logResponse(resp *http.Response) {
-	fLog := log.With().Str("function", "LogResponse").Logger()
-	var respDumped []byte
-	var err error
-	if resp.Header.Get("Content-Encoding") == "gzip" {
-		respDumped, err = dumpCompressedResponse(resp, true)
-	} else {
-		respDumped, err = httputil.DumpResponse(resp, true)
-	}
-	if err != nil {
-		fLog.Panic().Err(err)
-		return
-	}
-
-	fLog.Debug().Str("messagetype", "DumpedResponse").Msg(string(respDumped))
-}
-
 func reportError(w http.ResponseWriter) {
 	http.Error(w, "Gozzmock. Something went wrong", http.StatusInternalServerError)
 }
@@ -245,7 +161,7 @@ func doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
 		return
 	}
 
-	LogRequest(httpReq)
+	dumpRequest(httpReq)
 
 	httpClient := &http.Client{}
 
@@ -258,7 +174,7 @@ func doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
 
 	defer resp.Body.Close()
 
-	logResponse(resp)
+	dumpResponse(resp)
 
 	// NOTE
 	// Changing the header map after a call to WriteHeader (or

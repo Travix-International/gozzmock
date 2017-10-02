@@ -12,7 +12,7 @@ import (
 
 func httpHandleFuncHelper(pattern string, handler func(http.ResponseWriter, *http.Request)) {
 	wrappedHandler := func(w http.ResponseWriter, r *http.Request) {
-		LogRequest(r)
+		dumpRequest(r)
 		handler(w, r)
 		if r != nil && r.Body != nil {
 			r.Body.Close()
