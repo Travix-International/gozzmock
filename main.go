@@ -10,12 +10,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type context struct {
+// Context contains objects which shared between http handlers
+type Context struct {
 	logLevel zerolog.Level
 	storage  *Storage
 }
 
-func (context *context) httpHandleFuncHelper(pattern string, handler func(http.ResponseWriter, *http.Request)) {
+func (context *Context) httpHandleFuncHelper(pattern string, handler func(http.ResponseWriter, *http.Request)) {
 	wrappedHandler := func(w http.ResponseWriter, r *http.Request) {
 		if context.logLevel == zerolog.DebugLevel {
 			dumpRequest(r)
@@ -30,30 +31,27 @@ func (context *context) httpHandleFuncHelper(pattern string, handler func(http.R
 	http.HandleFunc(pattern, wrappedHandler)
 }
 
-func (context *context) setZeroLogLevel(logLevel string) {
+func (context *Context) setZeroLogLevel(logLevel string) {
 
-	selectedLevel := zerolog.DebugLevel
+	context.logLevel = zerolog.DebugLevel
 
 	switch logLevel {
 	case "debug":
-		selectedLevel = zerolog.DebugLevel
+		context.logLevel = zerolog.DebugLevel
 	case "info":
-		selectedLevel = zerolog.InfoLevel
+		context.logLevel = zerolog.InfoLevel
 	case "warn":
-		selectedLevel = zerolog.WarnLevel
+		context.logLevel = zerolog.WarnLevel
 	case "error":
-		selectedLevel = zerolog.ErrorLevel
+		context.logLevel = zerolog.ErrorLevel
 	case "fatal":
-		selectedLevel = zerolog.FatalLevel
+		context.logLevel = zerolog.FatalLevel
 	case "panic":
-		selectedLevel = zerolog.PanicLevel
+		context.logLevel = zerolog.PanicLevel
 	}
-	fmt.Println("set log level:", selectedLevel)
-	zerolog.SetGlobalLevel(selectedLevel)
-	context.logLevel = selectedLevel
-	zerolog.TimestampFieldName = "timestamp"
+	fmt.Println("set log level:", context.logLevel)
+	zerolog.SetGlobalLevel(context.logLevel)
 	log.Logger = log.With().Str("type", "gozzmock").Logger()
-
 }
 
 func main() {
@@ -67,7 +65,7 @@ func main() {
 	fmt.Println("loglevel:", logLevel)
 	fmt.Println("tail:", flag.Args())
 
-	context := &context{}
+	context := &Context{}
 	context.setZeroLogLevel(logLevel)
 
 	exps := ExpectationsFromString(initExpectations)

@@ -24,7 +24,7 @@ func (storage *Storage) writeExpectationsToResponse(w http.ResponseWriter) {
 }
 
 // HandlerAddExpectation handler parses request and adds expectation to global expectations list
-func (context *context) HandlerAddExpectation(w http.ResponseWriter, r *http.Request) {
+func (context *Context) HandlerAddExpectation(w http.ResponseWriter, r *http.Request) {
 	fLog := log.With().Str("function", "HandlerAddExpectation").Logger()
 
 	if r.Method != "POST" {
@@ -48,7 +48,7 @@ func (context *context) HandlerAddExpectation(w http.ResponseWriter, r *http.Req
 }
 
 // HandlerRemoveExpectation handler parses request and deletes expectation from global expectations list
-func (context *context) HandlerRemoveExpectation(w http.ResponseWriter, r *http.Request) {
+func (context *Context) HandlerRemoveExpectation(w http.ResponseWriter, r *http.Request) {
 	fLog := log.With().Str("function", "HandlerRemoveExpectation").Logger()
 
 	if r.Method != "POST" {
@@ -71,7 +71,7 @@ func (context *context) HandlerRemoveExpectation(w http.ResponseWriter, r *http.
 }
 
 // HandlerGetExpectations handler parses request and returns global expectations list
-func (context *context) HandlerGetExpectations(w http.ResponseWriter, r *http.Request) {
+func (context *Context) HandlerGetExpectations(w http.ResponseWriter, r *http.Request) {
 	fLog := log.With().Str("function", "HandlerGetExpectations").Logger()
 
 	if r.Method != "GET" {
@@ -84,12 +84,12 @@ func (context *context) HandlerGetExpectations(w http.ResponseWriter, r *http.Re
 }
 
 // HandlerStatus handler returns applications status
-func (context *context) HandlerStatus(w http.ResponseWriter, r *http.Request) {
+func (context *Context) HandlerStatus(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "gozzmock status is OK")
 }
 
 // HandlerDefault handler is an entry point for all incoming requests
-func (context *context) HandlerDefault(w http.ResponseWriter, r *http.Request) {
+func (context *Context) HandlerDefault(w http.ResponseWriter, r *http.Request) {
 
 	context.generateResponse(w, ControllerTranslateRequestToExpectation(r))
 }
@@ -108,7 +108,7 @@ func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationRespo
 	w.Write([]byte(resp.Body))
 }
 
-func (context *context) applyExpectation(exp Expectation, w http.ResponseWriter, req *ExpectationRequest) {
+func (context *Context) applyExpectation(exp Expectation, w http.ResponseWriter, req *ExpectationRequest) {
 	fLog := log.With().Str("function", "applyExpectation").Str("key", exp.Key).Logger()
 
 	if exp.Delay > 0 {
@@ -130,7 +130,7 @@ func (context *context) applyExpectation(exp Expectation, w http.ResponseWriter,
 	}
 }
 
-func (context *context) generateResponse(w http.ResponseWriter, req *ExpectationRequest) {
+func (context *Context) generateResponse(w http.ResponseWriter, req *ExpectationRequest) {
 	fLog := log.With().Str("function", "generateResponseToResponseWriter").Logger()
 
 	orderedStoredExpectations := context.storage.GetExpectationsOrderedByPriority()
@@ -154,7 +154,7 @@ func reportError(w http.ResponseWriter) {
 	http.Error(w, "Gozzmock. Something went wrong", http.StatusInternalServerError)
 }
 
-func (context *context) doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
+func (context *Context) doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
 	fLog := log.With().Str("function", "doHTTPRequest").Logger()
 
 	if httpReq == nil {

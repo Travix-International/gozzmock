@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func (context *context) addExpectation(t *testing.T, exp Expectation) *bytes.Buffer {
+func (context *Context) addExpectation(t *testing.T, exp Expectation) *bytes.Buffer {
 	handlerAddExpectation := http.HandlerFunc(context.HandlerAddExpectation)
 
 	expJSON, err := json.Marshal(exp)
@@ -36,7 +36,7 @@ func (context *context) addExpectation(t *testing.T, exp Expectation) *bytes.Buf
 	return httpTestResponseRecorder.Body
 }
 
-func (context *context) removeExpectation(t *testing.T, expKey string) *bytes.Buffer {
+func (context *Context) removeExpectation(t *testing.T, expKey string) *bytes.Buffer {
 	handlerAddExpectation := http.HandlerFunc(context.HandlerRemoveExpectation)
 
 	expRemoveJSON, err := json.Marshal(ExpectationRemove{Key: expKey})
@@ -57,7 +57,7 @@ func (context *context) removeExpectation(t *testing.T, expKey string) *bytes.Bu
 }
 
 func TestHandlerNoExpectations(t *testing.T) {
-	context := context{
+	context := Context{
 		logLevel: zerolog.DebugLevel,
 		storage:  ControllerCreateStorage()}
 	handlerDefault := http.HandlerFunc(context.HandlerDefault)
@@ -79,7 +79,7 @@ func TestHandlerNoExpectations(t *testing.T) {
 }
 
 func TestHandlerAddAndRemoveExpectation(t *testing.T) {
-	context := context{
+	context := Context{
 		logLevel: zerolog.DebugLevel,
 		storage:  ControllerCreateStorage()}
 	handlerRemoveExpectation := http.HandlerFunc(context.HandlerRemoveExpectation)
@@ -111,7 +111,7 @@ func TestHandlerAddAndRemoveExpectation(t *testing.T) {
 }
 
 func TestHandlerAddTwoExpectations(t *testing.T) {
-	context := context{
+	context := Context{
 		logLevel: zerolog.DebugLevel,
 		storage:  ControllerCreateStorage()}
 	handlerDefault := http.HandlerFunc(context.HandlerDefault)
@@ -162,7 +162,7 @@ func TestHandlerAddTwoExpectations(t *testing.T) {
 }
 
 func TestHandlerGetExpectations(t *testing.T) {
-	context := context{
+	context := Context{
 		logLevel: zerolog.DebugLevel,
 		storage:  ControllerCreateStorage()}
 	handlerGetExpectations := http.HandlerFunc(context.HandlerGetExpectations)
@@ -197,7 +197,7 @@ func TestHandlerGetExpectations(t *testing.T) {
 }
 
 func TestHandlerStatus(t *testing.T) {
-	context := context{
+	context := Context{
 		logLevel: zerolog.DebugLevel,
 		storage:  ControllerCreateStorage()}
 	handlerStatus := http.HandlerFunc(context.HandlerStatus)
@@ -219,8 +219,8 @@ func TestHandlerStatus(t *testing.T) {
 }
 
 func TestHandlerForwardValidatrHeaders(t *testing.T) {
-	context := context{
-		logLevel: zerolog.DebugLevel,
+	context := Context{
+		logLevel: zerolog.InfoLevel,
 		storage:  ControllerCreateStorage()}
 	handlerDefault := http.HandlerFunc(context.HandlerDefault)
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -258,7 +258,7 @@ func writeCompressedMessage(w http.ResponseWriter, message []byte) {
 }
 
 func TestHandlerForwardReturnsGzip(t *testing.T) {
-	context := context{
+	context := Context{
 		logLevel: zerolog.DebugLevel,
 		storage:  ControllerCreateStorage()}
 	handlerDefault := http.HandlerFunc(context.HandlerDefault)
