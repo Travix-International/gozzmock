@@ -113,7 +113,7 @@ func ControllerStringPassesFilter(str string, filter string) bool {
 	if error != nil {
 		return strings.Contains(str, filter)
 	}
-	return r.Match([]byte(str))
+	return r.MatchString(str)
 }
 
 // ControllerRequestPassesFilter validates whether the incoming request passes particular filter

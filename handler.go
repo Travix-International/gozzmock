@@ -44,7 +44,7 @@ func (context *Context) HandlerAddExpectation(w http.ResponseWriter, r *http.Req
 	expectationSetDefaultValues(&exp)
 
 	context.storage.AddExpectation(exp.Key, exp)
-	context.storage.writeExpectationsToResponse(w)
+	fmt.Fprintf(w, "Expectation with key '%s' was added", exp.Key)
 }
 
 // HandlerRemoveExpectation handler parses request and deletes expectation from global expectations list
@@ -67,7 +67,7 @@ func (context *Context) HandlerRemoveExpectation(w http.ResponseWriter, r *http.
 	}
 
 	context.storage.RemoveExpectation(requestBody.Key)
-	context.storage.writeExpectationsToResponse(w)
+	fmt.Fprintf(w, "Expectation with key '%s' was removed", requestBody.Key)
 }
 
 // HandlerGetExpectations handler parses request and returns global expectations list
