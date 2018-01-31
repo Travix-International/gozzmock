@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -17,43 +18,62 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func (context *Context) addExpectation(t *testing.T, exp Expectation) *bytes.Buffer {
-	handlerAddExpectation := http.HandlerFunc(context.HandlerAddExpectation)
-
-	expJSON, err := json.Marshal(exp)
+func jsonMarshalMust(v interface{}) []byte {
+	encoded, err := json.Marshal(v)
 	if err != nil {
 		panic(err)
 	}
-	req, err := http.NewRequest("POST", "/gozzmock/add_expectation", bytes.NewBuffer(expJSON))
+
+	return encoded
+}
+
+func httpNewRequestMust(method, url string, body io.Reader) *http.Request {
+	req, err := http.NewRequest(method, url, body)
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
+	return req
+}
+
+func (context *Context) getExpectations(t *testing.T) *bytes.Buffer {
+	handlerGetExpectations := http.HandlerFunc(context.HandlerGetExpectations)
+	req := httpNewRequestMust("GET", "/gozzmock/get_expectations", nil)
 
 	httpTestResponseRecorder := httptest.NewRecorder()
-	handlerAddExpectation.ServeHTTP(httpTestResponseRecorder, req)
+	handlerGetExpectations.ServeHTTP(httpTestResponseRecorder, req)
 	assert.Equal(t, http.StatusOK, httpTestResponseRecorder.Code)
 
 	return httpTestResponseRecorder.Body
 }
 
-func (context *Context) removeExpectation(t *testing.T, expKey string) *bytes.Buffer {
-	handlerAddExpectation := http.HandlerFunc(context.HandlerRemoveExpectation)
+func (context *Context) addExpectation(t *testing.T, exp Expectation) *bytes.Buffer {
+	handlerAddExpectation := http.HandlerFunc(context.HandlerAddExpectation)
 
-	expRemoveJSON, err := json.Marshal(ExpectationRemove{Key: expKey})
-	if err != nil {
-		panic(err)
-	}
+	expJSON := jsonMarshalMust(exp)
 
-	req, err := http.NewRequest("POST", "/gozzmock/remove_expectation", bytes.NewBuffer(expRemoveJSON))
-	if err != nil {
-		t.Fatal(err)
-	}
+	req := httpNewRequestMust("POST", "/gozzmock/add_expectation", bytes.NewBuffer(expJSON))
 
 	httpTestResponseRecorder := httptest.NewRecorder()
 	handlerAddExpectation.ServeHTTP(httpTestResponseRecorder, req)
 	assert.Equal(t, http.StatusOK, httpTestResponseRecorder.Code)
+	assert.Equal(t, fmt.Sprintf("Expectation with key '%s' was added", exp.Key), httpTestResponseRecorder.Body.String())
 
-	return httpTestResponseRecorder.Body
+	return context.getExpectations(t)
+}
+
+func (context *Context) removeExpectation(t *testing.T, expKey string) *bytes.Buffer {
+	handlerRemoveExpectation := http.HandlerFunc(context.HandlerRemoveExpectation)
+
+	expRemoveJSON := jsonMarshalMust(ExpectationRemove{Key: expKey})
+
+	req := httpNewRequestMust("POST", "/gozzmock/remove_expectation", bytes.NewBuffer(expRemoveJSON))
+
+	httpTestResponseRecorder := httptest.NewRecorder()
+	handlerRemoveExpectation.ServeHTTP(httpTestResponseRecorder, req)
+	assert.Equal(t, http.StatusOK, httpTestResponseRecorder.Code)
+	assert.Equal(t, fmt.Sprintf("Expectation with key '%s' was removed", expKey), httpTestResponseRecorder.Body.String())
+
+	return context.getExpectations(t)
 }
 
 func TestHandlerNoExpectations(t *testing.T) {
@@ -67,10 +87,7 @@ func TestHandlerNoExpectations(t *testing.T) {
 	defer testServer.Close()
 
 	// do request for response
-	req, err := http.NewRequest("GET", "/request", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	req := httpNewRequestMust("GET", "/request", nil)
 
 	httpTestResponseRecorder := httptest.NewRecorder()
 	handlerDefault.ServeHTTP(httpTestResponseRecorder, req)
@@ -82,32 +99,17 @@ func TestHandlerAddAndRemoveExpectation(t *testing.T) {
 	context := Context{
 		logLevel: zerolog.DebugLevel,
 		storage:  ControllerCreateStorage()}
-	handlerRemoveExpectation := http.HandlerFunc(context.HandlerRemoveExpectation)
 	expectedExp := Expectation{Key: "k"}
 	expectedExps := Expectations{expectedExp.Key: expectedExp}
 
 	body := context.addExpectation(t, expectedExp)
-	expsjson, err := json.Marshal(expectedExps)
-	if err != nil {
-		panic(err)
-	}
+	expsjson := jsonMarshalMust(expectedExps)
+
 	assert.Equal(t, string(expsjson), body.String())
 
-	// remove expectation
-	expRemoveJSON, err := json.Marshal(ExpectationRemove{Key: expectedExp.Key})
-	if err != nil {
-		panic(err)
-	}
-	req, err := http.NewRequest("POST", "/gozzmock/remove_expectation", bytes.NewBuffer(expRemoveJSON))
-	if err != nil {
-		t.Fatal(err)
-	}
+	body = context.removeExpectation(t, expectedExp.Key)
 
-	httpTestResponseRecorder := httptest.NewRecorder()
-	handlerRemoveExpectation.ServeHTTP(httpTestResponseRecorder, req)
-	assert.Equal(t, http.StatusOK, httpTestResponseRecorder.Code)
-
-	assert.Equal(t, "{}", httpTestResponseRecorder.Body.String())
+	assert.Equal(t, "{}", body.String())
 }
 
 func TestHandlerAddTwoExpectations(t *testing.T) {
@@ -137,10 +139,7 @@ func TestHandlerAddTwoExpectations(t *testing.T) {
 		Priority: 0})
 
 	// do request for response
-	req, err := http.NewRequest("POST", "/response", bytes.NewBuffer([]byte("request body")))
-	if err != nil {
-		t.Fatal(err)
-	}
+	req := httpNewRequestMust("POST", "/response", bytes.NewBuffer([]byte("request body")))
 
 	httpTestResponseRecorder := httptest.NewRecorder()
 	handlerDefault.ServeHTTP(httpTestResponseRecorder, req)
@@ -149,10 +148,7 @@ func TestHandlerAddTwoExpectations(t *testing.T) {
 	assert.Equal(t, "response body", httpTestResponseRecorder.Body.String())
 
 	// do request for forward
-	req, err = http.NewRequest("POST", "/forward", bytes.NewBuffer([]byte("forward body")))
-	if err != nil {
-		t.Fatal(err)
-	}
+	req = httpNewRequestMust("POST", "/forward", bytes.NewBuffer([]byte("forward body")))
 
 	httpTestResponseRecorder2 := httptest.NewRecorder()
 	handlerDefault.ServeHTTP(httpTestResponseRecorder2, req)
@@ -179,19 +175,13 @@ func TestHandlerGetExpectations(t *testing.T) {
 	context.addExpectation(t, expectation)
 
 	// do request for response
-	req, err := http.NewRequest("GET", "/gozzmock/get_expectations", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	req := httpNewRequestMust("GET", "/gozzmock/get_expectations", nil)
 
 	httpTestResponseRecorder := httptest.NewRecorder()
 	handlerGetExpectations.ServeHTTP(httpTestResponseRecorder, req)
 	assert.Equal(t, http.StatusOK, httpTestResponseRecorder.Code)
 
-	expectedResponse, err := json.Marshal(expectation)
-	if err != nil {
-		t.Fatal(err)
-	}
+	expectedResponse := jsonMarshalMust(expectation)
 
 	assert.Contains(t, httpTestResponseRecorder.Body.String(), string(expectedResponse))
 }
@@ -207,10 +197,7 @@ func TestHandlerStatus(t *testing.T) {
 	defer testServer.Close()
 
 	// do request for response
-	req, err := http.NewRequest("GET", "/gozzmock/status", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	req := httpNewRequestMust("GET", "/gozzmock/status", nil)
 
 	httpTestResponseRecorder := httptest.NewRecorder()
 	handlerStatus.ServeHTTP(httpTestResponseRecorder, req)
@@ -238,10 +225,8 @@ func TestHandlerForwardValidatrHeaders(t *testing.T) {
 		Priority: 0})
 
 	// do request for forward
-	req, err := http.NewRequest("POST", "/forward", bytes.NewBuffer([]byte("forward body")))
-	if err != nil {
-		t.Fatal(err)
-	}
+	req := httpNewRequestMust("POST", "/forward", bytes.NewBuffer([]byte("forward body")))
+
 	req.Host = "reqest_host"
 
 	httpTestResponseRecorder := httptest.NewRecorder()
@@ -277,10 +262,8 @@ func TestHandlerForwardReturnsGzip(t *testing.T) {
 		Priority: 0})
 
 	// do request for forward
-	req, err := http.NewRequest("POST", "/forward", bytes.NewBuffer([]byte("forward body")))
-	if err != nil {
-		t.Fatal(err)
-	}
+	req := httpNewRequestMust("POST", "/forward", bytes.NewBuffer([]byte("forward body")))
+
 	req.Header.Add("Accept-Encoding", "gzip")
 
 	httpTestResponseRecorder := httptest.NewRecorder()
