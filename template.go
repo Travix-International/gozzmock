@@ -41,7 +41,7 @@ func TemplateCreateResponseBody(tmpl string, req *ExpectationRequest) string {
 	t := template.Must(template.New("main").Funcs(fmap).Parse(decodedTmpl))
 	err = t.Execute(buf, req.Body)
 	if err != nil {
-		fLog.Error().Err(err)
+		fLog.Error().Err(err).Msgf("Error parsing template %s", decodedTmpl)
 	}
 	res := buf.String()
 	return res
