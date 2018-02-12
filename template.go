@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/base64"
 	"regexp"
+	"strings"
 	"text/template"
 
 	"github.com/rs/zerolog/log"
+	"github.com/satori/go.uuid"
 )
 
 func (req *ExpectationRequest) regexLocator(filter string) interface{} {
@@ -25,11 +27,19 @@ func (req *ExpectationRequest) regexLocator(filter string) interface{} {
 	return resSlice
 }
 
+func uuidv4() string {
+	return uuid.NewV4().String()
+}
+
+func (req *ExpectationRequest) requestHeaders() interface{} {
+	return (*req.Headers)
+}
+
 // TemplateCreateResponseBody creates response body as string based on template and incoming request
 func TemplateCreateResponseBody(tmpl string, req *ExpectationRequest) string {
 	fLog := log.With().Str("function", "TemplateCreateResponseBody").Logger()
 
-	decodedTmpl, err := TemplateDecodeFromBase64(tmpl)
+	decodedTmpl, err := templateDecodeFromBase64(tmpl)
 	if err != nil {
 		fLog.Warn().Err(err)
 		decodedTmpl = tmpl
@@ -37,9 +47,12 @@ func TemplateCreateResponseBody(tmpl string, req *ExpectationRequest) string {
 
 	buf := new(bytes.Buffer)
 	fmap := template.FuncMap{
-		"regexLocator": req.regexLocator}
+		"regexLocator":   req.regexLocator,
+		"requestHeaders": req.requestHeaders,
+		"uuidv4":         uuidv4,
+		"stringsSplit":   strings.Split}
 	t := template.Must(template.New("main").Funcs(fmap).Parse(decodedTmpl))
-	err = t.Execute(buf, req.Body)
+	err = t.Execute(buf, req)
 	if err != nil {
 		fLog.Error().Err(err).Msgf("Error parsing template %s", decodedTmpl)
 	}
@@ -47,8 +60,8 @@ func TemplateCreateResponseBody(tmpl string, req *ExpectationRequest) string {
 	return res
 }
 
-// TemplateDecodeFromBase64 decodes string from base64
-func TemplateDecodeFromBase64(encoded string) (string, error) {
+// templateDecodeFromBase64 decodes string from base64
+func templateDecodeFromBase64(encoded string) (string, error) {
 	decoded, err := base64.StdEncoding.DecodeString(encoded)
 	if err == nil {
 		return string(decoded), nil
