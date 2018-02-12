@@ -22,6 +22,7 @@ func (req *ExpectationRequest) regexLocator(filter string) interface{} {
 	return resSlice
 }
 
+// TemplateCreateResponseBody creates response body as string based on template and incoming request
 func TemplateCreateResponseBody(tmpl string, req *ExpectationRequest) string {
 	buf := new(bytes.Buffer)
 	fmap := template.FuncMap{

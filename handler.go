@@ -94,7 +94,7 @@ func (context *Context) HandlerDefault(w http.ResponseWriter, r *http.Request) {
 	context.generateResponse(w, ControllerTranslateRequestToExpectation(r))
 }
 
-func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationResponse) {
+func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationResponse, req *ExpectationRequest) {
 	// NOTE
 	// Changing the header map after a call to WriteHeader (or
 	// Write) has no effect unless the modified headers are
@@ -105,12 +105,11 @@ func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationRespo
 		}
 	}
 	w.WriteHeader(resp.HTTPCode)
-	w.Write([]byte(resp.Body))
-}
-
-func createResponseFromTemplate(w http.ResponseWriter, template string, req *ExpectationRequest) {
-	w.WriteHeader(http.StatusNotImplemented)
-	w.Write([]byte("Not implemented yet!"))
+	if len(resp.Template) > 0 {
+		w.Write([]byte(TemplateCreateResponseBody(resp.Template, req)))
+	} else {
+		w.Write([]byte(resp.Body))
+	}
 }
 
 func (context *Context) applyExpectation(exp Expectation, w http.ResponseWriter, req *ExpectationRequest) {
@@ -123,7 +122,7 @@ func (context *Context) applyExpectation(exp Expectation, w http.ResponseWriter,
 
 	if exp.Response != nil {
 		fLog.Info().Msg("Apply response expectation")
-		createResponseFromExpectation(w, exp.Response)
+		createResponseFromExpectation(w, exp.Response, req)
 		return
 	}
 
@@ -131,12 +130,6 @@ func (context *Context) applyExpectation(exp Expectation, w http.ResponseWriter,
 		fLog.Debug().Msg("Apply forward expectation")
 		httpReq := ControllerCreateHTTPRequest(req, exp.Forward)
 		context.doHTTPRequest(w, httpReq)
-		return
-	}
-
-	if exp.Template != "" {
-		fLog.Info().Msg("Generate response from template")
-		createResponseFromTemplate(w, exp.Template, req)
 		return
 	}
 }
