@@ -108,6 +108,11 @@ func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationRespo
 	w.Write([]byte(resp.Body))
 }
 
+func createResponseFromTemplate(w http.ResponseWriter, template string, req *ExpectationRequest) {
+	w.WriteHeader(http.StatusNotImplemented)
+	w.Write([]byte("Not implemented yet!"))
+}
+
 func (context *Context) applyExpectation(exp Expectation, w http.ResponseWriter, req *ExpectationRequest) {
 	fLog := log.With().Str("function", "applyExpectation").Str("key", exp.Key).Logger()
 
@@ -126,6 +131,12 @@ func (context *Context) applyExpectation(exp Expectation, w http.ResponseWriter,
 		fLog.Debug().Msg("Apply forward expectation")
 		httpReq := ControllerCreateHTTPRequest(req, exp.Forward)
 		context.doHTTPRequest(w, httpReq)
+		return
+	}
+
+	if exp.Template != "" {
+		fLog.Info().Msg("Generate response from template")
+		createResponseFromTemplate(w, exp.Template, req)
 		return
 	}
 }

@@ -41,6 +41,7 @@ type Expectation struct {
 	Request  *ExpectationRequest  `json:"request,omitempty"`
 	Forward  *ExpectationForward  `json:"forward,omitempty"`
 	Response *ExpectationResponse `json:"response,omitempty"`
+	Template string               `json:"template,omitempty"`
 	Delay    time.Duration        `json:"delay,omitempty"`
 	Priority int                  `json:"priority,omitempty"`
 }
