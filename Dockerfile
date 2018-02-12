@@ -1,7 +1,7 @@
 # Build stage
 FROM golang:1.9 as builder
 
-MAINTAINER Travix
+LABEL maintainer="Travix"
 
 COPY ./ /go/src/gozzmock
 
@@ -12,7 +12,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o gozzmock_bin .
 # Run stage
 FROM scratch
 
-MAINTAINER Travix
+LABEL maintainer="Travix"
 
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /go/src/gozzmock/gozzmock_bin .
