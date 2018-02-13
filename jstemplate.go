@@ -19,7 +19,7 @@ func JsTemplateCreateResponseBody(tmpl string, req *ExpectationRequest) string {
 	}
 
 	vm := otto.New()
-	vm.Set("req", req)
+	vm.Set("request", req)
 	value, err := vm.Run(decodedTmpl)
 	if err != nil {
 		fLog.Error().Err(err).Msgf("Error running template %s", decodedTmpl)
