@@ -22,14 +22,14 @@
 [[projects]]
   name = "github.com/rs/zerolog"
   packages = [".","internal/json","log"]
-  revision = "3ac71fc58dbd43122668a912b755b0979ba9ce1f"
-  version = "v1.3.0"
+  revision = "56a970de510213e50dbaa39ad73ac07c9ec75606"
+  version = "v1.5.0"
 
 [[projects]]
   name = "github.com/stretchr/testify"
   packages = ["assert"]
-  revision = "69483b4bd14f5845b5a1e55bca19e954e827f1d0"
-  version = "v1.1.4"
+  revision = "12b6f73e6084dad08a7c6e575284b177ecafbc71"
+  version = "v1.2.1"
 
 [[projects]]
   name = "gopkg.in/sourcemap.v1"
