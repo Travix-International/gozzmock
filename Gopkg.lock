@@ -14,16 +14,16 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/robertkrimen/otto"
+  packages = [".","ast","dbg","file","parser","registry","token"]
+  revision = "3b44b4dcb6c00477273595c312908e2412d07da6"
+
+[[projects]]
   name = "github.com/rs/zerolog"
   packages = [".","internal/json","log"]
   revision = "3ac71fc58dbd43122668a912b755b0979ba9ce1f"
   version = "v1.3.0"
-
-[[projects]]
-  name = "github.com/satori/go.uuid"
-  packages = ["."]
-  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
-  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/stretchr/testify"
@@ -31,9 +31,15 @@
   revision = "69483b4bd14f5845b5a1e55bca19e954e827f1d0"
   version = "v1.1.4"
 
+[[projects]]
+  name = "gopkg.in/sourcemap.v1"
+  packages = [".","base64vlq"]
+  revision = "6e83acea0053641eff084973fee085f0c193c61a"
+  version = "v1.0.5"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c0c2aad3beeea11c66fb55bfdab06ab0386d8a7da7614b7ee47e22044fd582e3"
+  inputs-digest = "54534416824304e0d7ab928c3f324ebedd125ef6d4506c1230d57e82e00a50a1"
   solver-name = "gps-cdcl"
   solver-version = 1
