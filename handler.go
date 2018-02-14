@@ -99,17 +99,26 @@ func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationRespo
 	// Changing the header map after a call to WriteHeader (or
 	// Write) has no effect unless the modified headers are
 	// trailers.
+	fLog := log.With().Str("function", "createResponseFromExpectation").Logger()
+
 	if resp.Headers != nil {
 		for name, value := range *resp.Headers {
 			w.Header().Set(name, value)
 		}
 	}
-	w.WriteHeader(resp.HTTPCode)
+
+	resposneBody := resp.Body
 	if len(resp.JsTemplate) > 0 {
-		w.Write([]byte(JsTemplateCreateResponseBody(resp.JsTemplate, req)))
-		return
+		var err error
+		resposneBody, err = JsTemplateCreateResponseBody(resp.JsTemplate, req)
+		if err != nil {
+			fLog.Error().Err(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
-	w.Write([]byte(resp.Body))
+	w.WriteHeader(resp.HTTPCode)
+	w.Write([]byte(resposneBody))
 }
 
 func (context *Context) applyExpectation(exp Expectation, w http.ResponseWriter, req *ExpectationRequest) {

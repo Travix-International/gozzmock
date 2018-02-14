@@ -2,29 +2,26 @@ package main
 
 import (
 	"encoding/base64"
+	"fmt"
 
 	"github.com/robertkrimen/otto"
-
-	"github.com/rs/zerolog/log"
 )
 
 // JsTemplateCreateResponseBody creates response body as string based on template and incoming request
-func JsTemplateCreateResponseBody(tmpl string, req *ExpectationRequest) string {
-	fLog := log.With().Str("function", "JsTemplateCreateResponseBody").Logger()
-
+func JsTemplateCreateResponseBody(tmpl string, req *ExpectationRequest) (string, error) {
 	decodedTmpl, err := templateDecodeFromBase64(tmpl)
 	if err != nil {
-		fLog.Warn().Err(err)
-		decodedTmpl = tmpl
+		return "", fmt.Errorf("Error decoding from base64 template %s \n %s", decodedTmpl, err.Error())
 	}
 
 	vm := otto.New()
 	vm.Set("request", req)
 	value, err := vm.Run(decodedTmpl)
 	if err != nil {
-		fLog.Error().Err(err).Msgf("Error running template %s", decodedTmpl)
+		return "", fmt.Errorf("Error running template %s \n %s", decodedTmpl, err.Error())
 	}
-	return value.String()
+
+	return value.String(), nil
 }
 
 // templateDecodeFromBase64 decodes string from base64
