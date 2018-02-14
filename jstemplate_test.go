@@ -7,26 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestJsTemplateCreateResponseBodySimpleJson(t *testing.T) {
-	expReq := &ExpectationRequest{
-		Body: `{
-			"a": [
-				{
-					"b": "bv1"
-				}
-				]}`}
-
-	tmpl := `var response = {"response": JSON.parse(request.Body)["a"][0]["b"]};
-	JSON.stringify(response)`
-
-	expectedOutput := `{"response":"bv1"}`
-
-	res := JsTemplateCreateResponseBody(tmpl, expReq)
-
-	assert.Equal(t, expectedOutput, res)
-}
-
 func TestJsTemplateCreateResponseBodySimpleJsonEncodedBase64(t *testing.T) {
+	// Arrange
 	expReq := &ExpectationRequest{
 		Body: `{
 			"a": [
@@ -41,7 +23,31 @@ func TestJsTemplateCreateResponseBodySimpleJsonEncodedBase64(t *testing.T) {
 
 	expectedOutput := `{"response":"bv1"}`
 
-	res := JsTemplateCreateResponseBody(tmpl, expReq)
+	// Act
+	res, err := JsTemplateCreateResponseBody(tmpl, expReq)
 
+	// Assert
+	assert.Nil(t, err)
 	assert.Equal(t, expectedOutput, res)
+}
+
+func TestJsTemplateCreateResponseBodyWrongEncoding(t *testing.T) {
+	// Arrange
+	expReq := &ExpectationRequest{
+		Body: `{
+			"a": [
+				{
+					"b": "bv1"
+				}
+				]}`}
+
+	tmpl := `"abc"`
+
+	// Act
+	res, err := JsTemplateCreateResponseBody(tmpl, expReq)
+
+	// Assert
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "Error decoding from base64 template")
+	assert.Equal(t, "", res)
 }
