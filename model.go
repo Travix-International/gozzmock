@@ -30,9 +30,10 @@ type ExpectationForward struct {
 
 // ExpectationResponse is response action if request passes filter
 type ExpectationResponse struct {
-	HTTPCode int      `json:"httpcode"`
-	Body     string   `json:"body"`
-	Headers  *Headers `json:"headers,omitempty"`
+	HTTPCode   int      `json:"httpcode"`
+	Body       string   `json:"body"`
+	Headers    *Headers `json:"headers,omitempty"`
+	JsTemplate string   `json:"jstemplate,omitempty"`
 }
 
 // Expectation is single set of rules: expected request and prepared action

@@ -94,18 +94,31 @@ func (context *Context) HandlerDefault(w http.ResponseWriter, r *http.Request) {
 	context.generateResponse(w, ControllerTranslateRequestToExpectation(r))
 }
 
-func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationResponse) {
+func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationResponse, req *ExpectationRequest) {
 	// NOTE
 	// Changing the header map after a call to WriteHeader (or
 	// Write) has no effect unless the modified headers are
 	// trailers.
+	fLog := log.With().Str("function", "createResponseFromExpectation").Logger()
+
 	if resp.Headers != nil {
 		for name, value := range *resp.Headers {
 			w.Header().Set(name, value)
 		}
 	}
+
+	resposneBody := resp.Body
+	if len(resp.JsTemplate) > 0 {
+		var err error
+		resposneBody, err = JsTemplateCreateResponseBody(resp.JsTemplate, req)
+		if err != nil {
+			fLog.Error().Err(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 	w.WriteHeader(resp.HTTPCode)
-	w.Write([]byte(resp.Body))
+	w.Write([]byte(resposneBody))
 }
 
 func (context *Context) applyExpectation(exp Expectation, w http.ResponseWriter, req *ExpectationRequest) {
@@ -118,7 +131,7 @@ func (context *Context) applyExpectation(exp Expectation, w http.ResponseWriter,
 
 	if exp.Response != nil {
 		fLog.Info().Msg("Apply response expectation")
-		createResponseFromExpectation(w, exp.Response)
+		createResponseFromExpectation(w, exp.Response, req)
 		return
 	}
 
