@@ -37,7 +37,7 @@ func TestJsTemplateCreateResponseBodySimpleJsonEncodedBase64(t *testing.T) {
 
 	tmpl := base64.StdEncoding.EncodeToString([]byte(`
 		var response = {"response": JSON.parse(request.Body)["a"][0]["b"]};
-		JSON.stringify(response)`))
+		JSON.stringify(response);`))
 
 	expectedOutput := `{"response":"bv1"}`
 
