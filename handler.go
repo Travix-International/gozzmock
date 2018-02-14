@@ -107,9 +107,9 @@ func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationRespo
 	w.WriteHeader(resp.HTTPCode)
 	if len(resp.JsTemplate) > 0 {
 		w.Write([]byte(JsTemplateCreateResponseBody(resp.JsTemplate, req)))
-	} else {
-		w.Write([]byte(resp.Body))
+		return
 	}
+	w.Write([]byte(resp.Body))
 }
 
 func (context *Context) applyExpectation(exp Expectation, w http.ResponseWriter, req *ExpectationRequest) {
