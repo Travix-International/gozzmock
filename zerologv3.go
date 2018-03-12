@@ -37,9 +37,7 @@ type metadata struct {
 	Timestamp   string `json:"timestamp"`
 }
 
-type payload struct {
-	Message string `json:"message"`
-}
+type payload map[string]string
 
 type source struct {
 	AppName string `json:"app_name"`
@@ -65,49 +63,42 @@ func (w V3FormatWriter) Write(p []byte) (n int, err error) {
 		return
 	}
 
-	loglevel, ok := event[zerolog.LevelFieldName].(string)
-	if !ok {
-		loglevel = ""
-	}
-
-	message, ok := event[zerolog.MessageFieldName].(string)
-	if !ok {
-		message = ""
-	}
-
-	timestamp, ok := event[zerolog.TimestampFieldName].(string)
-	if !ok {
-		timestamp = ""
-	}
-
-	messagetype, ok := event["message_type"].(string)
-	if !ok {
-		messagetype = ""
-	}
-
-	appname, ok := event["app_name"].(string)
-	if !ok {
-		appname = ""
-	}
-
 	logMessage := v3LogMessage{
 		LogFormat: "v3",
 		Metadata: metadata{
-			LogLevel:    strings.ToUpper(loglevel),
-			MessageType: messagetype,
-			Timestamp:   timestamp},
-		Payload: payload{
-			Message: message},
+			LogLevel:    "",
+			MessageType: "",
+			Timestamp:   ""},
+		Payload: payload{},
 		Source: source{
-			AppName: appname}}
+			AppName: ""}}
+
+	for field, value := range event {
+		switch field {
+		case zerolog.LevelFieldName:
+			logMessage.Metadata.LogLevel = strings.ToUpper(value.(string))
+		case zerolog.TimestampFieldName:
+			logMessage.Metadata.Timestamp = value.(string)
+		case "message_type":
+			logMessage.Metadata.MessageType = value.(string)
+		case "app_name":
+			logMessage.Source.AppName = value.(string)
+		case zerolog.MessageFieldName:
+			logMessage.Payload["message"] = value.(string)
+		default:
+			strValue, ok := value.(string)
+			if !ok {
+				logMessage.Payload[field] = ""
+			}
+			logMessage.Payload[field] = strValue
+		}
+	}
 
 	msg, err := json.Marshal(logMessage)
 	if err != nil {
 		fmt.Println("Error marshalling log message!")
-		return
+		return 0, err
 	}
 	fmt.Fprintln(w.Out, string(msg))
-
-	n = len(msg)
-	return
+	return len(msg), nil
 }
