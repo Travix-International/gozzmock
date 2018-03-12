@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-
 	"net/http"
+	"os"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -51,7 +51,8 @@ func (context *Context) setZeroLogLevel(logLevel string) {
 	}
 	fmt.Println("set log level:", context.logLevel)
 	zerolog.SetGlobalLevel(context.logLevel)
-	log.Logger = log.With().Str("type", "gozzmock").Logger()
+	log.Logger = log.Output(V3FormatWriter{Out: os.Stderr}).
+		With().Str("app_name", "gozzmock").Logger()
 }
 
 func main() {
