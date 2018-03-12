@@ -1,4 +1,4 @@
-package zerologv3
+package main
 
 import (
 	"bytes"

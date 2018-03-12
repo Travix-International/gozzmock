@@ -1,7 +1,7 @@
-package zerologv3
+package main
 
 /*
-Package zerologv3 provides a writer for log format v3 which is used in Travix
+Provides a writer for log format v3 which is used in Travix
 Implementation is based on zerolog.ConsoleWriter
 
 Example of log message in v3 format:
