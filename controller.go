@@ -118,7 +118,7 @@ func ControllerStringPassesFilter(str string, filter string) bool {
 
 // ControllerRequestPassesFilter validates whether the incoming request passes particular filter
 func ControllerRequestPassesFilter(req *ExpectationRequest, storedExpectation *ExpectationRequest) bool {
-	fLog := log.With().Str("function", "ControllerRequestPassesFilter").Logger()
+	fLog := log.With().Str("message_type", "ControllerRequestPassesFilter").Logger()
 
 	if storedExpectation == nil {
 		fLog.Debug().Msg("Stored expectation.request is nil")
@@ -163,7 +163,7 @@ func ControllerRequestPassesFilter(req *ExpectationRequest, storedExpectation *E
 
 // ControllerCreateHTTPRequest creates an http request based on incoming request and forward rules
 func ControllerCreateHTTPRequest(req *ExpectationRequest, fwd *ExpectationForward) *http.Request {
-	fLog := log.With().Str("function", "ControllerCreateHTTPRequest").Logger()
+	fLog := log.With().Str("message_type", "ControllerCreateHTTPRequest").Logger()
 
 	fwdURL, err := url.Parse(fmt.Sprintf("%s://%s%s", fwd.Scheme, fwd.Host, req.Path))
 	if err != nil {

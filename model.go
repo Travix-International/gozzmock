@@ -75,7 +75,7 @@ func ObjectFromJSON(reader io.Reader, v interface{}) error {
 
 // ExpectationsFromString decodes string with array of expectations to array of expectation objects
 func ExpectationsFromString(str string) []Expectation {
-	fLog := log.With().Str("function", "ExpectationsFromString").Logger()
+	fLog := log.With().Str("message_type", "ExpectationsFromString").Logger()
 
 	exps := make([]Expectation, 0)
 
