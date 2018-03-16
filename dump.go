@@ -15,7 +15,7 @@ import (
 
 // dumpRequest dumps http request and writes content to log
 func dumpRequest(req *http.Request) {
-	fLog := log.With().Str("function", "dumpRequest").Logger()
+	fLog := log.With().Str("message_type", "dumpRequest").Logger()
 	reqDumped, err := httputil.DumpRequest(req, true)
 	if err != nil {
 		fLog.Panic().Err(err)
@@ -105,7 +105,7 @@ func dumpCompressedResponse(resp *http.Response, body bool) ([]byte, error) {
 
 // dumpResponse dumps http response and writes content to log
 func dumpResponse(resp *http.Response) {
-	fLog := log.With().Str("function", "dumpResponse").Logger()
+	fLog := log.With().Str("message_type", "dumpResponse").Logger()
 	var respDumped []byte
 	var err error
 	if resp.Header.Get("Content-Encoding") == "gzip" {

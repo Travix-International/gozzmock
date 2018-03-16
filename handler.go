@@ -13,7 +13,7 @@ import (
 )
 
 func (storage *Storage) writeExpectationsToResponse(w http.ResponseWriter) {
-	fLog := log.With().Str("function", "writeExpectationsToResponse").Logger()
+	fLog := log.With().Str("message_type", "writeExpectationsToResponse").Logger()
 	expsJSON, err := storage.GetExpectationsJSON()
 	if err != nil {
 		fLog.Panic().Err(err)
@@ -25,7 +25,7 @@ func (storage *Storage) writeExpectationsToResponse(w http.ResponseWriter) {
 
 // HandlerAddExpectation handler parses request and adds expectation to global expectations list
 func (context *Context) HandlerAddExpectation(w http.ResponseWriter, r *http.Request) {
-	fLog := log.With().Str("function", "HandlerAddExpectation").Logger()
+	fLog := log.With().Str("message_type", "HandlerAddExpectation").Logger()
 
 	if r.Method != "POST" {
 		fLog.Panic().Msgf("Wrong method %s", r.Method)
@@ -49,7 +49,7 @@ func (context *Context) HandlerAddExpectation(w http.ResponseWriter, r *http.Req
 
 // HandlerRemoveExpectation handler parses request and deletes expectation from global expectations list
 func (context *Context) HandlerRemoveExpectation(w http.ResponseWriter, r *http.Request) {
-	fLog := log.With().Str("function", "HandlerRemoveExpectation").Logger()
+	fLog := log.With().Str("message_type", "HandlerRemoveExpectation").Logger()
 
 	if r.Method != "POST" {
 		fLog.Panic().Msgf("Wrong method %s", r.Method)
@@ -72,7 +72,7 @@ func (context *Context) HandlerRemoveExpectation(w http.ResponseWriter, r *http.
 
 // HandlerGetExpectations handler parses request and returns global expectations list
 func (context *Context) HandlerGetExpectations(w http.ResponseWriter, r *http.Request) {
-	fLog := log.With().Str("function", "HandlerGetExpectations").Logger()
+	fLog := log.With().Str("message_type", "HandlerGetExpectations").Logger()
 
 	if r.Method != "GET" {
 		fLog.Panic().Msgf("Wrong method %s", r.Method)
@@ -99,7 +99,7 @@ func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationRespo
 	// Changing the header map after a call to WriteHeader (or
 	// Write) has no effect unless the modified headers are
 	// trailers.
-	fLog := log.With().Str("function", "createResponseFromExpectation").Logger()
+	fLog := log.With().Str("message_type", "createResponseFromExpectation").Logger()
 
 	if resp.Headers != nil {
 		for name, value := range *resp.Headers {
@@ -122,7 +122,7 @@ func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationRespo
 }
 
 func (context *Context) applyExpectation(exp Expectation, w http.ResponseWriter, req *ExpectationRequest) {
-	fLog := log.With().Str("function", "applyExpectation").Str("key", exp.Key).Logger()
+	fLog := log.With().Str("message_type", "applyExpectation").Str("key", exp.Key).Logger()
 
 	if exp.Delay > 0 {
 		fLog.Info().Msg(fmt.Sprintf("Delay %v sec", exp.Delay))
@@ -144,7 +144,7 @@ func (context *Context) applyExpectation(exp Expectation, w http.ResponseWriter,
 }
 
 func (context *Context) generateResponse(w http.ResponseWriter, req *ExpectationRequest) {
-	fLog := log.With().Str("function", "generateResponseToResponseWriter").Logger()
+	fLog := log.With().Str("message_type", "generateResponseToResponseWriter").Logger()
 
 	orderedStoredExpectations := context.storage.GetExpectationsOrderedByPriority()
 	for i := 0; i < len(orderedStoredExpectations); i++ {
@@ -168,7 +168,7 @@ func reportError(w http.ResponseWriter) {
 }
 
 func (context *Context) doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
-	fLog := log.With().Str("function", "doHTTPRequest").Logger()
+	fLog := log.With().Str("message_type", "doHTTPRequest").Logger()
 
 	if httpReq == nil {
 		fLog.Panic().Msg("http.Request is nil")
