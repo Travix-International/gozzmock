@@ -58,18 +58,28 @@ func (context *Context) setZeroLogLevel(logLevel string) {
 func main() {
 	var initExpectations string
 	flag.StringVar(&initExpectations, "expectations", "[]", "set initial expectations")
+	var initExpectationJSONFile string
+	flag.StringVar(&initExpectationJSONFile, "expectationsFile", "", "set path to json file with expectations")
 	var logLevel string
 	flag.StringVar(&logLevel, "loglevel", "debug", "set log level: debug, info, warn, error, fatal, panic")
 	flag.Parse()
 
+	fmt.Println("Arguments:")
 	fmt.Println("initial expectations:", initExpectations)
+	fmt.Println("initial expectations from json file:", initExpectationJSONFile)
 	fmt.Println("loglevel:", logLevel)
 	fmt.Println("tail:", flag.Args())
 
 	context := &Context{}
 	context.setZeroLogLevel(logLevel)
 
-	exps := ExpectationsFromString(initExpectations)
+	var exps []Expectation
+	if len(initExpectations) > 0 {
+		exps = append(exps, ExpectationsFromString(initExpectations)...)
+	}
+	if len(initExpectationJSONFile) > 0 {
+		exps = append(exps, ExpectationsFromJSONFile(initExpectationJSONFile)...)
+	}
 
 	context.storage = ControllerCreateStorage()
 	for _, exp := range exps {
