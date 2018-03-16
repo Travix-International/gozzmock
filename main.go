@@ -75,10 +75,13 @@ func main() {
 
 	var exps []Expectation
 	if len(initExpectations) > 2 {
-		exps = append(exps, ExpectationsFromString(initExpectations)...)
+		exps = ExpectationsFromString(initExpectations)
+		fmt.Println("loaded expecations from string:", len(exps))
 	}
 	if len(initExpectationJSONFile) > 0 {
-		exps = append(exps, ExpectationsFromJSONFile(initExpectationJSONFile)...)
+		expsFromFile := ExpectationsFromJSONFile(initExpectationJSONFile)
+		fmt.Println("loaded expecations from file:", len(expsFromFile))
+		exps = append(exps, expsFromFile...)
 	}
 
 	context.storage = ControllerCreateStorage()
