@@ -74,7 +74,7 @@ func main() {
 	context.setZeroLogLevel(logLevel)
 
 	var exps []Expectation
-	if len(initExpectations) > 0 {
+	if len(initExpectations) > 2 {
 		exps = append(exps, ExpectationsFromString(initExpectations)...)
 	}
 	if len(initExpectationJSONFile) > 0 {
