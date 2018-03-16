@@ -8,8 +8,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 // Headers are HTTP headers
@@ -92,8 +90,6 @@ func ExpectationsFromString(str string) []Expectation {
 
 // ExpectationsFromJSONFile decodes json file content to expectations
 func ExpectationsFromJSONFile(file string) []Expectation {
-	fLog := log.With().Str("message_type", "ExpectationsFromJSONFile").Logger()
-
 	var exps []Expectation
 
 	data, err := ioutil.ReadFile(file)
