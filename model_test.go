@@ -2,7 +2,6 @@ package main
 
 import (
 	"io/ioutil"
-	"os"
 	"strings"
 	"testing"
 
@@ -36,18 +35,17 @@ func TestConvertationExpectationFromReadCloser(t *testing.T) {
 }
 
 func TestConvertationExpectationFromFile(t *testing.T) {
-	str := "[{\"key\": \"k\"}]"
-	file := "test.json"
-	err := ioutil.WriteFile(file, []byte(str), 0644)
-	assert.Nil(t, err)
+
+	file := "test1.json"
+	//err := ioutil.WriteFile(file, []byte(str), 0644)
+	//assert.Nil(t, err)
 
 	exps := ExpectationsFromJSONFile(file)
-	assert.Nil(t, err)
+	//assert.Nil(t, err)
 
-	err = os.Remove(file)
-	assert.Nil(t, err)
+	//err = os.Remove(file)
+	//assert.Nil(t, err)
 
-	assert.Len(t, exps, 1)
-	assert.Equal(t, "k", exps[0].Key)
-
+	assert.Len(t, exps, 2)
+	assert.Equal(t, "default", exps[0].Key)
 }
