@@ -49,5 +49,4 @@ func TestConvertationExpectationFromFile(t *testing.T) {
 
 	assert.Len(t, exps, 1)
 	assert.Equal(t, "k", exps[0].Key)
-
 }

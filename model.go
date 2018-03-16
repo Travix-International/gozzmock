@@ -8,8 +8,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 // Headers are HTTP headers
@@ -77,14 +75,12 @@ func ObjectFromJSON(reader io.Reader, v interface{}) error {
 
 // ExpectationsFromString decodes string with array of expectations to array of expectation objects
 func ExpectationsFromString(str string) []Expectation {
-	fLog := log.With().Str("message_type", "ExpectationsFromString").Logger()
 
 	var exps []Expectation
 
 	err := ObjectFromJSON(strings.NewReader(str), &exps)
 	if err != nil {
-		fLog.Panic().Err(err)
-		return exps
+		panic(err)
 	}
 	for _, exp := range exps {
 		expectationSetDefaultValues(&exp)
@@ -94,19 +90,15 @@ func ExpectationsFromString(str string) []Expectation {
 
 // ExpectationsFromJSONFile decodes json file content to expectations
 func ExpectationsFromJSONFile(file string) []Expectation {
-	fLog := log.With().Str("message_type", "ExpectationsFromJSONFile").Logger()
-
 	var exps []Expectation
 
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
-		fLog.Panic().Err(err)
-		return exps
+		panic(err)
 	}
 	err = ObjectFromJSON(bytes.NewReader(data), &exps)
 	if err != nil {
-		fLog.Panic().Err(err)
-		return exps
+		panic(err)
 	}
 	for _, exp := range exps {
 		expectationSetDefaultValues(&exp)
