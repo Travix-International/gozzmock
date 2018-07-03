@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestExpectationsFromString(t *testing.T) {
+func TestMain_ExpectationsFromString(t *testing.T) {
 	str := "[{\"key\": \"k1\"},{\"key\": \"k2\"}]"
 	exps := ExpectationsFromString(str)
 	assert.Equal(t, 2, len(exps))
@@ -17,7 +17,7 @@ func TestExpectationsFromString(t *testing.T) {
 	assert.Equal(t, "k2", exps[1].Key)
 }
 
-func TestExpectationsDefaultValues(t *testing.T) {
+func TestMain_ExpectationsDefaultValues(t *testing.T) {
 	str := "[{\"key\": \"k1\", \"forward\":{\"host\":\"localhost\"}}]"
 	exps := ExpectationsFromString(str)
 	assert.Equal(t, 1, len(exps))
@@ -27,7 +27,7 @@ func TestExpectationsDefaultValues(t *testing.T) {
 	assert.Equal(t, "http", exps[0].Forward.Scheme)
 }
 
-func TestConvertationExpectationFromReadCloser(t *testing.T) {
+func TestMain_ConvertationExpectationFromReadCloser(t *testing.T) {
 	str := "{\"key\": \"k\"}"
 	exp := Expectation{}
 	err := ObjectFromJSON(ioutil.NopCloser(strings.NewReader(str)), &exp)
@@ -35,7 +35,7 @@ func TestConvertationExpectationFromReadCloser(t *testing.T) {
 	assert.Equal(t, "k", exp.Key)
 }
 
-func TestConvertationExpectationFromFile(t *testing.T) {
+func TestMain_ConvertationExpectationFromFile(t *testing.T) {
 	str := "[{\"key\": \"k\"}]"
 	file := "test.json"
 	err := ioutil.WriteFile(file, []byte(str), 0644)

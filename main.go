@@ -1,24 +1,114 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
-// Context contains objects which shared between http handlers
-type Context struct {
-	logLevel zerolog.Level
-	storage  *Storage
+// Headers are HTTP headers
+type Headers map[string]string
+
+// ExpectationRequest is filter for incoming requests
+type ExpectationRequest struct {
+	Method  string   `json:"method"`
+	Path    string   `json:"path"`
+	Body    string   `json:"body"`
+	Headers *Headers `json:"headers,omitempty"`
 }
 
-func (context *Context) httpHandleFuncHelper(pattern string, handler func(http.ResponseWriter, *http.Request)) {
+// ExpectationForward is forward action if request passes filter
+type ExpectationForward struct {
+	Scheme  string   `json:"scheme"`
+	Host    string   `json:"host"`
+	Headers *Headers `json:"headers,omitempty"`
+}
+
+// ExpectationResponse is response action if request passes filter
+type ExpectationResponse struct {
+	HTTPCode   int      `json:"httpcode"`
+	Body       string   `json:"body"`
+	Headers    *Headers `json:"headers,omitempty"`
+	JsTemplate string   `json:"jstemplate,omitempty"`
+}
+
+// Expectation is single set of rules: expected request and prepared action
+type Expectation struct {
+	Key      string               `json:"key"`
+	Request  *ExpectationRequest  `json:"request,omitempty"`
+	Forward  *ExpectationForward  `json:"forward,omitempty"`
+	Response *ExpectationResponse `json:"response,omitempty"`
+	Delay    time.Duration        `json:"delay,omitempty"`
+	Priority int                  `json:"priority,omitempty"`
+}
+
+// ExpectationRemove removes action from list by key
+type ExpectationRemove struct {
+	Key string `json:"key"`
+}
+
+// Expectations is a map for expectations
+type Expectations map[string]Expectation
+
+// ObjectFromJSON decodes json to object
+func ObjectFromJSON(reader io.Reader, v interface{}) error {
+	bodyDecoder := json.NewDecoder(reader)
+	return bodyDecoder.Decode(v)
+}
+
+// ExpectationsFromString decodes string with array of expectations to array of expectation objects
+func ExpectationsFromString(str string) []Expectation {
+
+	var exps []Expectation
+
+	err := ObjectFromJSON(strings.NewReader(str), &exps)
+	if err != nil {
+		panic(err)
+	}
+	for _, exp := range exps {
+		expectationSetDefaultValues(&exp)
+	}
+	return exps
+}
+
+// ExpectationsFromJSONFile decodes json file content to expectations
+func ExpectationsFromJSONFile(file string) []Expectation {
+	var exps []Expectation
+
+	data, err := ioutil.ReadFile(file)
+	if err != nil {
+		panic(err)
+	}
+	err = ObjectFromJSON(bytes.NewReader(data), &exps)
+	if err != nil {
+		panic(err)
+	}
+	for _, exp := range exps {
+		expectationSetDefaultValues(&exp)
+	}
+	return exps
+}
+
+// expectationSetDefaultValues sets default values after deserialization
+func expectationSetDefaultValues(exp *Expectation) {
+	if exp.Forward != nil && exp.Forward.Scheme == "" {
+		exp.Forward.Scheme = "http"
+	}
+}
+
+func httpHandleWrapper(zloglevel zerolog.Level, pattern string, handler func(http.ResponseWriter, *http.Request)) {
 	wrappedHandler := func(w http.ResponseWriter, r *http.Request) {
-		if context.logLevel == zerolog.DebugLevel {
+		if zloglevel == zerolog.DebugLevel {
 			dumpRequest(r)
 		}
 
@@ -31,28 +121,29 @@ func (context *Context) httpHandleFuncHelper(pattern string, handler func(http.R
 	http.HandleFunc(pattern, wrappedHandler)
 }
 
-func (context *Context) setZeroLogLevel(logLevel string) {
+func toZeroLogLevel(logLevel string) zerolog.Level {
 
-	context.logLevel = zerolog.DebugLevel
+	zlogLevel := zerolog.DebugLevel
 
 	switch logLevel {
 	case "debug":
-		context.logLevel = zerolog.DebugLevel
+		zlogLevel = zerolog.DebugLevel
 	case "info":
-		context.logLevel = zerolog.InfoLevel
+		zlogLevel = zerolog.InfoLevel
 	case "warn":
-		context.logLevel = zerolog.WarnLevel
+		zlogLevel = zerolog.WarnLevel
 	case "error":
-		context.logLevel = zerolog.ErrorLevel
+		zlogLevel = zerolog.ErrorLevel
 	case "fatal":
-		context.logLevel = zerolog.FatalLevel
+		zlogLevel = zerolog.FatalLevel
 	case "panic":
-		context.logLevel = zerolog.PanicLevel
+		zlogLevel = zerolog.PanicLevel
 	}
-	fmt.Println("set log level:", context.logLevel)
-	zerolog.SetGlobalLevel(context.logLevel)
+	fmt.Println("set log level:", zlogLevel)
+	zerolog.SetGlobalLevel(zlogLevel)
 	log.Logger = log.Output(V3FormatWriter{Out: os.Stderr}).
 		With().Str("app_name", "gozzmock").Logger()
+	return zlogLevel
 }
 
 func main() {
@@ -70,8 +161,8 @@ func main() {
 	fmt.Println("loglevel:", logLevel)
 	fmt.Println("tail:", flag.Args())
 
-	context := &Context{}
-	context.setZeroLogLevel(logLevel)
+	server := &gzServer{}
+	server.logLevel = toZeroLogLevel(logLevel)
 
 	var exps []Expectation
 	if len(initExpectations) > 2 {
@@ -84,15 +175,15 @@ func main() {
 		exps = append(exps, expsFromFile...)
 	}
 
-	context.storage = ControllerCreateStorage()
+	server.storage.init()
 	for _, exp := range exps {
-		context.storage.AddExpectation(exp.Key, exp)
+		server.storage.add(exp.Key, exp)
 	}
 
-	http.HandleFunc("/gozzmock/status", context.HandlerStatus)
-	context.httpHandleFuncHelper("/gozzmock/add_expectation", context.HandlerAddExpectation)
-	context.httpHandleFuncHelper("/gozzmock/remove_expectation", context.HandlerRemoveExpectation)
-	context.httpHandleFuncHelper("/gozzmock/get_expectations", context.HandlerGetExpectations)
-	context.httpHandleFuncHelper("/", context.HandlerDefault)
+	http.HandleFunc("/gozzmock/status", server.status)
+	httpHandleWrapper(server.logLevel, "/gozzmock/add_expectation", server.add)
+	httpHandleWrapper(server.logLevel, "/gozzmock/remove_expectation", server.remove)
+	httpHandleWrapper(server.logLevel, "/gozzmock/get_expectations", server.get)
+	httpHandleWrapper(server.logLevel, "/", server.root)
 	http.ListenAndServe(":8080", nil)
 }
