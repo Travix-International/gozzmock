@@ -27,7 +27,7 @@ type mockServer interface {
 // Context contains objects which shared between http handlers
 type gzServer struct {
 	logLevel   zerolog.Level
-	storage    mockStorage
+	storage    expStorage
 	httpClient httpClient
 }
 
@@ -84,7 +84,7 @@ func (server *gzServer) remove(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Expectation with key '%s' was removed", requestBody.Key)
 }
 
-func writeExpectationsToResponse(storage mockStorage, w http.ResponseWriter) {
+func writeExpectationsToResponse(storage expStorage, w http.ResponseWriter) {
 	fLog := log.With().Str("message_type", "writeExpectationsToResponse").Logger()
 	expsJSON, err := json.Marshal(storage.getOrdered())
 	if err != nil {

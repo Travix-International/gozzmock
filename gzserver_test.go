@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"encoding/base64"
@@ -167,9 +168,9 @@ type gzMockedHTTPClient struct {
 }
 
 func (gzClient *gzMockedHTTPClient) do(req *http.Request) (*http.Response, error) {
-	bodyString := req.URL.String()
+	bodyString := req.URL.String() + " Host:" + req.Host
 	for k, v := range req.Header {
-		bodyString = bodyString + "_" + k + ":" + strings.Join(v, ",")
+		bodyString += " " + k + ":" + strings.Join(v, ",")
 	}
 	body := ioutil.NopCloser(strings.NewReader(bodyString))
 	response := &http.Response{StatusCode: 200, Body: body}
@@ -279,7 +280,7 @@ func TestHandlerRoot_TwoOverlapingExpectations(t *testing.T) {
 	assert.Equal(t, "response body", wR.Body.String())
 
 	assert.Equal(t, http.StatusOK, wF.Code)
-	assert.Equal(t, "https://local.com/forward", wF.Body.String())
+	assert.Equal(t, "https://local.com/forward Host:local.com", wF.Body.String())
 }
 
 func TestHandlerGet_GetExpectations(t *testing.T) {
@@ -346,32 +347,26 @@ func TestHandlerRoot_ForwardValidatrHeaders(t *testing.T) {
 
 	// Assert
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "fwd_host", w.Header().Get("Host"))
-	assert.Equal(t, `https://local.xx/forward`, w.Body.String())
-}
-
-func writeCompressedMessage(w http.ResponseWriter, message []byte) {
-	w.Header().Set("Content-Encoding", "gzip")
-	gz := gzip.NewWriter(w)
-	defer gz.Close()
-	gz.Write(message)
+	assert.Equal(t, `https://local.xx/forward Host:fwd_host`, w.Body.String())
 }
 
 type gzMockedGzipHTTPClient struct {
 }
 
 func (gzClient *gzMockedGzipHTTPClient) do(req *http.Request) (*http.Response, error) {
-	var w http.ResponseWriter
 	resp := http.Response{
 		Header: make(http.Header)}
 
+	resp.StatusCode = http.StatusOK
 	resp.Header.Add("Content-Encoding", "gzip")
-	gz := gzip.NewWriter(w)
-	defer gz.Close()
 
+	var b bytes.Buffer
+	gz := gzip.NewWriter(&b)
 	gz.Write([]byte(req.URL.String()))
-	io.Copy(w, resp.Body)
-	defer resp.Body.Close()
+	gz.Close()
+
+	resp.Body = ioutil.NopCloser(bufio.NewReader(&b))
+
 	return &resp, nil
 }
 
@@ -407,7 +402,7 @@ func TestHandlerRoot_ForwardReturnsGzip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, `https:\\local.xx\forward`, string(body))
+	assert.Equal(t, `https://local.xx/forward`, string(body))
 }
 
 func TestHandlerRoot_RespondsWithJsTemplate(t *testing.T) {

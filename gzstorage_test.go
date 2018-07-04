@@ -6,30 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGzStorage_NotInit_AddPanics(t *testing.T) {
-	//Arrange
-	var storage gzStorage
-
-	//Assert
-	assert.Panics(t, func() { storage.add("", Expectation{}) })
-}
-
-func TestGzStorage_NotInit_RemovePanics(t *testing.T) {
-	//Arrange
-	var storage gzStorage
-
-	//Assert
-	assert.Panics(t, func() { storage.remove("") })
-}
-
-func TestGzStorage_NotInit_GetOrderedPanics(t *testing.T) {
-	//Arrange
-	var storage gzStorage
-
-	//Assert
-	assert.Panics(t, func() { storage.getOrdered() })
-}
-
 func TestGzStorage_EmptyGetOrdered(t *testing.T) {
 	//Arrange
 	storage := newGzStorage()
@@ -99,16 +75,16 @@ func TestGzStorage_RemoveWrongKey(t *testing.T) {
 func TestGzStorage_Order(t *testing.T) {
 	//Arrange
 	storage := newGzStorage()
-	storage.add("p10", Expectation{Priority: 10})
-	storage.add("p5", Expectation{Priority: 5})
-	storage.add("p15", Expectation{Priority: 15})
+	storage.add("p10", Expectation{Key: "p10", Priority: 10})
+	storage.add("p5", Expectation{Key: "p5", Priority: 5})
+	storage.add("p15", Expectation{Key: "p15", Priority: 15})
 
 	//Act
 	res := storage.getOrdered()
 
 	//Assert
 	assert.Equal(t, 3, len(res))
-	assert.Equal(t, "p5", res[0].Key)
+	assert.Equal(t, "p15", res[0].Key)
 	assert.Equal(t, "p10", res[1].Key)
-	assert.Equal(t, "p15", res[2].Key)
+	assert.Equal(t, "p5", res[2].Key)
 }

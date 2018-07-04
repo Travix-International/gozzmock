@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-type mockStorage interface {
+type expStorage interface {
 	add(key string, exp Expectation)
 	remove(key string)
 	getOrdered() OrderedExpectations
@@ -23,9 +23,6 @@ func newGzStorage() *gzStorage {
 
 // AddExpectation adds new expectation to list. If expectation with same key exists, updates it
 func (storage *gzStorage) add(key string, exp Expectation) {
-	if storage == nil {
-		panic("storage is nil")
-	}
 	storage.mu.Lock()
 	storage.expectations[key] = exp
 	storage.mu.Unlock()
@@ -33,10 +30,6 @@ func (storage *gzStorage) add(key string, exp Expectation) {
 
 // RemoveExpectation removes expectation with particular key
 func (storage *gzStorage) remove(key string) {
-	if storage == nil {
-		panic("storage is nil")
-	}
-
 	storage.mu.RLock()
 	_, ok := storage.expectations[key]
 	storage.mu.RUnlock()
@@ -58,10 +51,6 @@ func (exps OrderedExpectations) Less(i, j int) bool { return exps[i].Priority > 
 // getOrdered returns map with int keys sorted by priority DESC.
 // 0-indexed element has the highest priority
 func (storage *gzStorage) getOrdered() OrderedExpectations {
-	if storage == nil {
-		panic("storage is nil")
-	}
-
 	listForSorting := OrderedExpectations{}
 	i := 0
 	storage.mu.RLock()
