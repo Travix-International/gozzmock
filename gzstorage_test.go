@@ -11,7 +11,7 @@ func TestGzStorage_NotInit_AddPanics(t *testing.T) {
 	var storage gzStorage
 
 	//Assert
-	assert.Panics(t, storage.add())
+	assert.Panics(t, func() { storage.add("", Expectation{}) })
 }
 
 func TestGzStorage_NotInit_RemovePanics(t *testing.T) {
@@ -19,7 +19,7 @@ func TestGzStorage_NotInit_RemovePanics(t *testing.T) {
 	var storage gzStorage
 
 	//Assert
-	assert.Panics(t, storage.remove())
+	assert.Panics(t, func() { storage.remove("") })
 }
 
 func TestGzStorage_NotInit_GetOrderedPanics(t *testing.T) {
@@ -27,26 +27,14 @@ func TestGzStorage_NotInit_GetOrderedPanics(t *testing.T) {
 	var storage gzStorage
 
 	//Assert
-	assert.Panics(t, storage.getOrdered())
-}
-
-func TestGzStorage_Empty(t *testing.T) {
-	//Arrange
-	var storage gzStorage
-
-	//Act
-	storage.init()
-
-	//Assert
-	assert.Empty(t, res)
+	assert.Panics(t, func() { storage.getOrdered() })
 }
 
 func TestGzStorage_EmptyGetOrdered(t *testing.T) {
 	//Arrange
-	var storage gzStorage
+	storage := newGzStorage()
 
 	//Act
-	storage.init()
 	res := storage.getOrdered()
 
 	//Assert
@@ -55,8 +43,7 @@ func TestGzStorage_EmptyGetOrdered(t *testing.T) {
 
 func TestGzStorage_Add(t *testing.T) {
 	//Arrange
-	var storage gzStorage
-	storage.init()
+	storage := newGzStorage()
 
 	//Act
 	storage.add("k", Expectation{Key: "key"})
@@ -69,8 +56,7 @@ func TestGzStorage_Add(t *testing.T) {
 
 func TestGzStorage_AddSameKey(t *testing.T) {
 	//Arrange
-	var storage gzStorage
-	storage.init()
+	storage := newGzStorage()
 
 	//Act
 	storage.add("k1", Expectation{Key: "v1"})
@@ -84,8 +70,7 @@ func TestGzStorage_AddSameKey(t *testing.T) {
 
 func TestGzStorage_Remove(t *testing.T) {
 	//Arrange
-	var storage gzStorage
-	storage.init()
+	storage := newGzStorage()
 	storage.add("k", Expectation{Key: "key"})
 
 	//Act
@@ -99,8 +84,7 @@ func TestGzStorage_Remove(t *testing.T) {
 
 func TestGzStorage_RemoveWrongKey(t *testing.T) {
 	//Arrange
-	var storage gzStorage
-	storage.init()
+	storage := newGzStorage()
 	storage.add("k", Expectation{Key: "key"})
 
 	//Act
@@ -114,8 +98,7 @@ func TestGzStorage_RemoveWrongKey(t *testing.T) {
 
 func TestGzStorage_Order(t *testing.T) {
 	//Arrange
-	var storage gzStorage
-	storage.init()
+	storage := newGzStorage()
 	storage.add("p10", Expectation{Priority: 10})
 	storage.add("p5", Expectation{Priority: 5})
 	storage.add("p15", Expectation{Priority: 15})

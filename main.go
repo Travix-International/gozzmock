@@ -175,7 +175,7 @@ func main() {
 		exps = append(exps, expsFromFile...)
 	}
 
-	server.storage.init()
+	server.storage = newGzStorage()
 	for _, exp := range exps {
 		server.storage.add(exp.Key, exp)
 	}

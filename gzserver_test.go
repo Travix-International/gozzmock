@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 
@@ -164,10 +163,29 @@ func httpNewRequestMust(method, url string, body io.Reader) *http.Request {
 	return req
 }
 
-func TestGzServer_NoExpectations_ReturnEmptyList(t *testing.T) {
+type gzMockedHTTPClient struct {
+}
+
+func (gzClient *gzMockedHTTPClient) do(req *http.Request) (*http.Response, error) {
+	bodyString := req.URL.String()
+	for k, v := range req.Header {
+		bodyString = bodyString + "_" + k + ":" + strings.Join(v, ",")
+	}
+	body := ioutil.NopCloser(strings.NewReader(bodyString))
+	response := &http.Response{StatusCode: 200, Body: body}
+	return response, nil
+}
+
+func newMockedGzServer() *gzServer {
+	server := &gzServer{logLevel: zerolog.DebugLevel}
+	server.storage = newGzStorage()
+	server.httpClient = &gzMockedHTTPClient{}
+	return server
+}
+
+func TestHandlerGet_NoExpectations_ReturnEmptyList(t *testing.T) {
 	//Arrange
-	server := gzServer{logLevel: zerolog.DebugLevel}
-	server.storage.init()
+	server := newMockedGzServer()
 
 	r := httpNewRequestMust("GET", "/gozzmock/get_expectations", nil)
 	w := httptest.NewRecorder()
@@ -176,7 +194,7 @@ func TestGzServer_NoExpectations_ReturnEmptyList(t *testing.T) {
 	server.get(w, r)
 
 	//Assert
-	assert.Equal(t, http.StatusNotImplemented, w.Code)
+	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "{}", w.Body.String())
 }
 
@@ -189,219 +207,147 @@ func jsonMarshalMust(v interface{}) []byte {
 	return encoded
 }
 
-/*
-func (context *gzServerMock) getExpectations(t *testing.T) *bytes.Buffer {
-	handlerGetExpectations := http.HandlerFunc(context.HandlerGetExpectations)
+func TestHandlerRoot_NoExpectations(t *testing.T) {
+	//Arrange
+	server := newMockedGzServer()
 
-	handlerGetExpectations.ServeHTTP(httpTestResponseRecorder, req)
-	assert.Equal(t, http.StatusOK, httpTestResponseRecorder.Code)
+	r := httpNewRequestMust("GET", "/request", nil)
+	w := httptest.NewRecorder()
 
-	return httpTestResponseRecorder.Body
+	//Act
+	server.root(w, r)
+
+	//Assert
+	assert.Equal(t, http.StatusNotImplemented, w.Code)
+	assert.Equal(t, "No expectations in gozzmock for request!", w.Body.String())
 }
 
-func (context *gzServerMock) addExpectation(t *testing.T, exp Expectation) *bytes.Buffer {
-	handlerAddExpectation := http.HandlerFunc(context.HandlerAddExpectation)
+func TestHandlerAddRemove_AddAndRemoveExpectation(t *testing.T) {
+	//Arrange
+	server := newMockedGzServer()
+	exp := Expectation{Key: "k"}
 
 	expJSON := jsonMarshalMust(exp)
+	expRemoveJSON := jsonMarshalMust(ExpectationRemove{Key: exp.Key})
 
-	req := httpNewRequestMust("POST", "/gozzmock/add_expectation", bytes.NewBuffer(expJSON))
+	rAdd := httpNewRequestMust("POST", "/add", bytes.NewBuffer(expJSON))
+	rRemove := httpNewRequestMust("POST", "/remove", bytes.NewBuffer(expRemoveJSON))
 
-	httpTestResponseRecorder := httptest.NewRecorder()
-	handlerAddExpectation.ServeHTTP(httpTestResponseRecorder, req)
-	assert.Equal(t, http.StatusOK, httpTestResponseRecorder.Code)
-	assert.Equal(t, fmt.Sprintf("Expectation with key '%s' was added", exp.Key), httpTestResponseRecorder.Body.String())
+	wAdd := httptest.NewRecorder()
+	wRemove := httptest.NewRecorder()
 
-	return context.getExpectations(t)
+	//Act
+	server.add(wAdd, rAdd)
+	server.remove(wRemove, rRemove)
+
+	//Assert
+	assert.Equal(t, http.StatusOK, wAdd.Code)
+	assert.Equal(t, "Expectation with key 'k' was added", wAdd.Body.String())
+	assert.Equal(t, http.StatusOK, wRemove.Code)
+	assert.Equal(t, "Expectation with key 'k' was removed", wRemove.Body.String())
 }
 
-func (context *gzServerMock) removeExpectation(t *testing.T, expKey string) *bytes.Buffer {
-	handlerRemoveExpectation := http.HandlerFunc(context.HandlerRemoveExpectation)
-
-	expRemoveJSON := jsonMarshalMust(ExpectationRemove{Key: expKey})
-
-	req := httpNewRequestMust("POST", "/gozzmock/remove_expectation", bytes.NewBuffer(expRemoveJSON))
-
-	httpTestResponseRecorder := httptest.NewRecorder()
-	handlerRemoveExpectation.ServeHTTP(httpTestResponseRecorder, req)
-	assert.Equal(t, http.StatusOK, httpTestResponseRecorder.Code)
-	assert.Equal(t, fmt.Sprintf("Expectation with key '%s' was removed", expKey), httpTestResponseRecorder.Body.String())
-
-	return context.getExpectations(t)
-}
-*/
-
-func TestHandlerNoExpectations(t *testing.T) {
-	// Arrange
-	server := gzServer{logLevel: zerolog.DebugLevel}
-	server.storage.init()
-	handlerDefault := http.HandlerFunc(server.root)
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("response from test server"))
-	}))
-	defer testServer.Close()
-
-	// do request for response
-	req := httpNewRequestMust("GET", "/request", nil)
-
-	httpTestResponseRecorder := httptest.NewRecorder()
-
-	// Act
-	handlerDefault.ServeHTTP(httpTestResponseRecorder, req)
-
-	// Assert
-	assert.Equal(t, http.StatusNotImplemented, httpTestResponseRecorder.Code)
-	assert.Equal(t, "No expectations in gozzmock for request!", httpTestResponseRecorder.Body.String())
-}
-
-func TestHandlerAddAndRemoveExpectation(t *testing.T) {
-	// Arrange
-	context := gzServer{
-		logLevel: zerolog.DebugLevel}
-	context.storage.init()
-	expectedExp := Expectation{Key: "k"}
-	expectedExps := Expectations{expectedExp.Key: expectedExp}
-	expsjson := jsonMarshalMust(expectedExps)
-
-	// Act
-	bodyAddExpectation := context.addExpectation(t, expectedExp)
-	bodyRemoveExpectation := context.removeExpectation(t, expectedExp.Key)
-
-	// Assert
-	assert.Equal(t, string(expsjson), bodyAddExpectation.String())
-	assert.Equal(t, "{}", bodyRemoveExpectation.String())
-}
-
-func TestHandlerAddTwoExpectations(t *testing.T) {
-	// Arrange
-	context := gzServer{logLevel: zerolog.DebugLevel}
-	context.storage.init()
-	handlerDefault := http.HandlerFunc(context.HandlerDefault)
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		dumpRequest(r)
-		w.Write([]byte("response from test server"))
-	}))
-	defer testServer.Close()
-	testServerURL, err := url.Parse(testServer.URL)
-	if err != nil {
-		panic(err)
-	}
-
-	context.addExpectation(t, Expectation{
-		Key:      "response",
-		Request:  &ExpectationRequest{Path: "/response"},
-		Response: &ExpectationResponse{HTTPCode: http.StatusOK, Body: "response body"},
-		Priority: 1})
-
-	context.addExpectation(t, Expectation{
-		Key:      "forward",
-		Forward:  &ExpectationForward{Scheme: testServerURL.Scheme, Host: testServerURL.Host},
-		Priority: 0})
-
-	// do request for response
-	reqToRespnse := httpNewRequestMust("POST", "/response", bytes.NewBuffer([]byte("request body")))
-	reqToForward := httpNewRequestMust("POST", "/forward", bytes.NewBuffer([]byte("forward body")))
-
-	httpTestResponseRecorderToResponse := httptest.NewRecorder()
-	httpTestResponseRecorderToForward := httptest.NewRecorder()
-
-	// Act
-	handlerDefault.ServeHTTP(httpTestResponseRecorderToResponse, reqToRespnse)
-	handlerDefault.ServeHTTP(httpTestResponseRecorderToForward, reqToForward)
-
-	// Assert
-	assert.Equal(t, http.StatusOK, httpTestResponseRecorderToResponse.Code)
-	assert.Equal(t, "response body", httpTestResponseRecorderToResponse.Body.String())
-
-	assert.Equal(t, http.StatusOK, httpTestResponseRecorderToForward.Code)
-	assert.Equal(t, "response from test server", httpTestResponseRecorderToForward.Body.String())
-}
-
-func TestHandlerGetExpectations(t *testing.T) {
-	// Arrange
-	context := gzServer{logLevel: zerolog.DebugLevel}
-	context.storage.init()
-	handlerGetExpectations := http.HandlerFunc(context.HandlerGetExpectations)
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("response from test server"))
-	}))
-	defer testServer.Close()
-
-	expectation := Expectation{
+func TestHandlerRoot_TwoOverlapingExpectations(t *testing.T) {
+	//Arrange
+	server := newMockedGzServer()
+	exp1 := Expectation{
 		Key:      "response",
 		Request:  &ExpectationRequest{Path: "/response"},
 		Response: &ExpectationResponse{HTTPCode: http.StatusOK, Body: "response body"},
 		Priority: 1}
-	context.addExpectation(t, expectation)
 
-	expectedResponse := jsonMarshalMust(expectation)
-
-	// do request for response
-	req := httpNewRequestMust("GET", "/gozzmock/get_expectations", nil)
-
-	httpTestResponseRecorder := httptest.NewRecorder()
-
-	// Act
-	handlerGetExpectations.ServeHTTP(httpTestResponseRecorder, req)
-
-	// Assert
-	assert.Equal(t, http.StatusOK, httpTestResponseRecorder.Code)
-	assert.Contains(t, httpTestResponseRecorder.Body.String(), string(expectedResponse))
-}
-
-func TestHandlerStatus(t *testing.T) {
-	// Arrange
-	context := gzServer{logLevel: zerolog.DebugLevel}
-	context.storage.init()
-	handlerStatus := http.HandlerFunc(context.HandlerStatus)
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("response from test server"))
-	}))
-	defer testServer.Close()
-
-	req := httpNewRequestMust("GET", "/gozzmock/status", nil)
-
-	httpTestResponseRecorder := httptest.NewRecorder()
-
-	// Act
-	handlerStatus.ServeHTTP(httpTestResponseRecorder, req)
-
-	// Assert
-	assert.Equal(t, http.StatusOK, httpTestResponseRecorder.Code)
-	assert.Contains(t, "gozzmock status is OK", httpTestResponseRecorder.Body.String())
-}
-
-func TestHandlerForwardValidatrHeaders(t *testing.T) {
-	// Arrange
-	context := gzServer{logLevel: zerolog.DebugLevel}
-	context.storage.init()
-	handlerDefault := http.HandlerFunc(context.HandlerDefault)
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(fmt.Sprint(r.Host)))
-	}))
-	defer testServer.Close()
-	testServerURL, err := url.Parse(testServer.URL)
-	if err != nil {
-		panic(err)
-	}
-
-	context.addExpectation(t, Expectation{
+	exp2 := Expectation{
 		Key:      "forward",
-		Forward:  &ExpectationForward{Scheme: testServerURL.Scheme, Host: testServerURL.Host, Headers: &Headers{"Host": "fwd_host"}},
-		Priority: 0})
+		Forward:  &ExpectationForward{Scheme: "https", Host: "local.com"},
+		Priority: 0}
 
-	// do request for forward
-	req := httpNewRequestMust("POST", "/forward", bytes.NewBuffer([]byte("forward body")))
+	server.storage.add(exp1.Key, exp1)
+	server.storage.add(exp2.Key, exp2)
 
-	req.Host = "reqest_host"
+	reqToRespnse := httpNewRequestMust("POST", "/response", bytes.NewBuffer([]byte("request body")))
+	reqToForward := httpNewRequestMust("POST", "/forward", bytes.NewBuffer([]byte("forward body")))
 
-	httpTestResponseRecorder := httptest.NewRecorder()
+	wR := httptest.NewRecorder()
+	wF := httptest.NewRecorder()
 
-	// Act
-	handlerDefault.ServeHTTP(httpTestResponseRecorder, req)
+	//Act
+	server.root(wR, reqToRespnse)
+	server.root(wF, reqToForward)
 
 	// Assert
-	assert.Equal(t, http.StatusOK, httpTestResponseRecorder.Code)
-	assert.Equal(t, "fwd_host", httpTestResponseRecorder.Body.String())
+	assert.Equal(t, http.StatusOK, wR.Code)
+	assert.Equal(t, "response body", wR.Body.String())
+
+	assert.Equal(t, http.StatusOK, wF.Code)
+	assert.Equal(t, "https://local.com/forward", wF.Body.String())
+}
+
+func TestHandlerGet_GetExpectations(t *testing.T) {
+	server := newMockedGzServer()
+	exp1 := Expectation{
+		Key:      "response",
+		Request:  &ExpectationRequest{Path: "/response"},
+		Response: &ExpectationResponse{HTTPCode: http.StatusOK, Body: "response body"},
+		Priority: 1}
+
+	server.storage.add(exp1.Key, exp1)
+
+	expectedResponse := jsonMarshalMust(exp1)
+
+	rGet := httpNewRequestMust("GET", "/gozzmock/get_expectations", nil)
+	wGet := httptest.NewRecorder()
+
+	// Act
+	server.get(wGet, rGet)
+
+	// Assert
+	assert.Equal(t, http.StatusOK, wGet.Code)
+	assert.Contains(t, wGet.Body.String(), string(expectedResponse))
+}
+
+func TestHandler_Status(t *testing.T) {
+	// Arrange
+	server := newMockedGzServer()
+	exp1 := Expectation{
+		Key:      "response",
+		Request:  &ExpectationRequest{Path: "/response"},
+		Response: &ExpectationResponse{HTTPCode: http.StatusOK, Body: "response body"},
+		Priority: 1}
+
+	server.storage.add(exp1.Key, exp1)
+
+	r := httpNewRequestMust("GET", "/gozzmock/status", nil)
+	w := httptest.NewRecorder()
+
+	// Act
+	server.status(w, r)
+
+	// Assert
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, "gozzmock status is OK", w.Body.String())
+}
+
+func TestHandlerRoot_ForwardValidatrHeaders(t *testing.T) {
+	// Arrange
+	server := newMockedGzServer()
+	exp1 := Expectation{
+		Key:      "forward",
+		Forward:  &ExpectationForward{Scheme: "https", Host: "local.xx", Headers: &Headers{"Host": "fwd_host"}},
+		Priority: 0}
+
+	server.storage.add(exp1.Key, exp1)
+
+	r := httpNewRequestMust("POST", "/forward", bytes.NewBuffer([]byte("forward body")))
+	r.Host = "reqest_host"
+	w := httptest.NewRecorder()
+
+	// Act
+	server.root(w, r)
+
+	// Assert
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "fwd_host", w.Header().Get("Host"))
+	assert.Equal(t, `https://local.xx/forward`, w.Body.String())
 }
 
 func writeCompressedMessage(w http.ResponseWriter, message []byte) {
@@ -411,38 +357,48 @@ func writeCompressedMessage(w http.ResponseWriter, message []byte) {
 	gz.Write(message)
 }
 
-func TestHandlerForwardReturnsGzip(t *testing.T) {
+type gzMockedGzipHTTPClient struct {
+}
+
+func (gzClient *gzMockedGzipHTTPClient) do(req *http.Request) (*http.Response, error) {
+	var w http.ResponseWriter
+	resp := http.Response{
+		Header: make(http.Header)}
+
+	resp.Header.Add("Content-Encoding", "gzip")
+	gz := gzip.NewWriter(w)
+	defer gz.Close()
+
+	gz.Write([]byte(req.URL.String()))
+	io.Copy(w, resp.Body)
+	defer resp.Body.Close()
+	return &resp, nil
+}
+
+func TestHandlerRoot_ForwardReturnsGzip(t *testing.T) {
 	// Arrange
-	context := gzServer{logLevel: zerolog.DebugLevel}
-	context.storage.init()
-	handlerDefault := http.HandlerFunc(context.HandlerDefault)
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeCompressedMessage(w, []byte("response from test server"))
-	}))
-	defer testServer.Close()
-	testServerURL, err := url.Parse(testServer.URL)
-	if err != nil {
-		panic(err)
-	}
+	server := newMockedGzServer()
+	server.httpClient = &gzMockedGzipHTTPClient{}
 
-	context.addExpectation(t, Expectation{
+	exp1 := Expectation{
 		Key:      "forward",
-		Forward:  &ExpectationForward{Scheme: testServerURL.Scheme, Host: testServerURL.Host},
-		Priority: 0})
+		Forward:  &ExpectationForward{Scheme: "https", Host: "local.xx"},
+		Priority: 0}
 
-	// do request for forward
-	req := httpNewRequestMust("POST", "/forward", bytes.NewBuffer([]byte("forward body")))
+	server.storage.add(exp1.Key, exp1)
 
-	req.Header.Add("Accept-Encoding", "gzip")
+	r := httpNewRequestMust("POST", "/forward", bytes.NewBuffer([]byte("forward body")))
+	r.Header.Add("Accept-Encoding", "gzip")
 
-	httpTestResponseRecorder := httptest.NewRecorder()
+	w := httptest.NewRecorder()
+
 	// Act
-	handlerDefault.ServeHTTP(httpTestResponseRecorder, req)
+	server.root(w, r)
 
 	// Assert
-	assert.Equal(t, http.StatusOK, httpTestResponseRecorder.Code)
+	assert.Equal(t, http.StatusOK, w.Code)
 
-	reader, err := gzip.NewReader(httpTestResponseRecorder.Body)
+	reader, err := gzip.NewReader(w.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -451,32 +407,28 @@ func TestHandlerForwardReturnsGzip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, "response from test server", string(body))
+	assert.Equal(t, `https:\\local.xx\forward`, string(body))
 }
 
-func TestHandlerRespondsWithJsTemplate(t *testing.T) {
+func TestHandlerRoot_RespondsWithJsTemplate(t *testing.T) {
 	// Arrange
-	context := gzServer{logLevel: zerolog.DebugLevel}
-	context.storage.init()
-
-	handlerDefault := http.HandlerFunc(context.HandlerDefault)
+	server := newMockedGzServer()
 	jsTemplate := `"123".length`
 
-	expectation := Expectation{
+	exp := Expectation{
 		Key: "template",
 		Response: &ExpectationResponse{HTTPCode: http.StatusOK,
 			JsTemplate: base64.StdEncoding.EncodeToString([]byte(jsTemplate))},
 		Priority: 1}
-	context.addExpectation(t, expectation)
+	server.storage.add(exp.Key, exp)
 
-	req := httpNewRequestMust("GET", "/", nil)
-
-	httpTestResponseRecorder := httptest.NewRecorder()
+	r := httpNewRequestMust("GET", "/", nil)
+	w := httptest.NewRecorder()
 
 	// Act
-	handlerDefault.ServeHTTP(httpTestResponseRecorder, req)
+	server.root(w, r)
 
 	// Assert
-	assert.Equal(t, http.StatusOK, httpTestResponseRecorder.Code)
-	assert.Contains(t, httpTestResponseRecorder.Body.String(), "3")
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "3")
 }

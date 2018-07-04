@@ -6,7 +6,6 @@ import (
 )
 
 type mockStorage interface {
-	init()
 	add(key string, exp Expectation)
 	remove(key string)
 	getOrdered() OrderedExpectations
@@ -18,8 +17,8 @@ type gzStorage struct {
 	mu           sync.RWMutex
 }
 
-func (storage *gzStorage) init() {
-	storage = &gzStorage{expectations: make(Expectations)}
+func newGzStorage() *gzStorage {
+	return &gzStorage{expectations: make(Expectations)}
 }
 
 // AddExpectation adds new expectation to list. If expectation with same key exists, updates it

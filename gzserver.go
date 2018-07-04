@@ -26,8 +26,16 @@ type mockServer interface {
 
 // Context contains objects which shared between http handlers
 type gzServer struct {
-	logLevel zerolog.Level
-	storage  mockStorage
+	logLevel   zerolog.Level
+	storage    mockStorage
+	httpClient httpClient
+}
+
+func newGzServer() *gzServer {
+	server := &gzServer{logLevel: zerolog.DebugLevel}
+	server.storage = newGzStorage()
+	server.httpClient = newGzHTTPClient()
+	return server
 }
 
 func (server *gzServer) add(w http.ResponseWriter, r *http.Request) {
@@ -273,52 +281,6 @@ func (server *gzServer) applyExpectation(exp Expectation, w http.ResponseWriter,
 	}
 }
 
-func (server *gzServer) doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
-	fLog := log.With().Str("message_type", "doHTTPRequest").Logger()
-
-	if httpReq == nil {
-		fLog.Panic().Msg("http.Request is nil")
-		reportError(w)
-		return
-	}
-
-	if server.logLevel == zerolog.DebugLevel {
-		dumpRequest(httpReq)
-	}
-
-	httpClient := &http.Client{}
-
-	resp, err := httpClient.Do(httpReq)
-	if err != nil {
-		fLog.Panic().Err(err)
-		reportError(w)
-		return
-	}
-
-	defer resp.Body.Close()
-
-	if server.logLevel == zerolog.DebugLevel {
-		dumpResponse(resp)
-	}
-
-	// NOTE
-	// Changing the header map after a call to WriteHeader (or
-	// Write) has no effect unless the modified headers are
-	// trailers.
-	headers := *translateHTTPHeadersToExpHeaders(resp.Header)
-	for name, value := range headers {
-		w.Header().Set(name, value)
-	}
-	w.WriteHeader(resp.StatusCode)
-
-	_, err = io.Copy(w, resp.Body)
-	if err != nil {
-		fLog.Panic().Err(err)
-		reportError(w)
-		return
-	}
-}
-
 func reportError(w http.ResponseWriter) {
 	http.Error(w, "Gozzmock. Something went wrong", http.StatusInternalServerError)
 }
@@ -348,4 +310,48 @@ func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationRespo
 	}
 	w.WriteHeader(resp.HTTPCode)
 	w.Write([]byte(resposneBody))
+}
+
+func (server *gzServer) doHTTPRequest(w http.ResponseWriter, httpReq *http.Request) {
+	fLog := log.With().Str("message_type", "doHTTPRequest").Logger()
+
+	if httpReq == nil {
+		fLog.Panic().Msg("http.Request is nil")
+		reportError(w)
+		return
+	}
+
+	if server.logLevel == zerolog.DebugLevel {
+		dumpRequest(httpReq)
+	}
+
+	resp, err := server.httpClient.do(httpReq)
+	if err != nil {
+		fLog.Panic().Err(err)
+		reportError(w)
+		return
+	}
+
+	defer resp.Body.Close()
+
+	if server.logLevel == zerolog.DebugLevel {
+		dumpResponse(resp)
+	}
+
+	// NOTE
+	// Changing the header map after a call to WriteHeader (or
+	// Write) has no effect unless the modified headers are
+	// trailers.
+	headers := *translateHTTPHeadersToExpHeaders(resp.Header)
+	for name, value := range headers {
+		w.Header().Set(name, value)
+	}
+	w.WriteHeader(resp.StatusCode)
+
+	_, err = io.Copy(w, resp.Body)
+	if err != nil {
+		fLog.Panic().Err(err)
+		reportError(w)
+		return
+	}
 }
