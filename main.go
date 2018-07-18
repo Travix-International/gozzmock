@@ -161,9 +161,8 @@ func main() {
 	fmt.Println("loglevel:", logLevel)
 	fmt.Println("tail:", flag.Args())
 
-	server := &gzServer{}
+	server := newGzServer()
 	server.logLevel = toZeroLogLevel(logLevel)
-	server.httpClient = newGzHTTPClient()
 
 	var exps []Expectation
 	if len(initExpectations) > 2 {
@@ -176,7 +175,6 @@ func main() {
 		exps = append(exps, expsFromFile...)
 	}
 
-	server.storage = newGzStorage()
 	for _, exp := range exps {
 		server.storage.add(exp.Key, exp)
 	}
