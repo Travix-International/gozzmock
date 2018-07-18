@@ -163,6 +163,7 @@ func main() {
 
 	server := &gzServer{}
 	server.logLevel = toZeroLogLevel(logLevel)
+	server.httpClient = newGzHTTPClient()
 
 	var exps []Expectation
 	if len(initExpectations) > 2 {
