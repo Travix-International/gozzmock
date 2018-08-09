@@ -153,12 +153,15 @@ func main() {
 	flag.StringVar(&initExpectationJSONFile, "expectationsFile", "", "set path to json file with expectations")
 	var logLevel string
 	flag.StringVar(&logLevel, "loglevel", "debug", "set log level: debug, info, warn, error, fatal, panic")
+	var port string
+	flag.StringVar(&port, "port", "8080", "default port to run: 8080")
 	flag.Parse()
 
 	fmt.Println("Arguments:")
 	fmt.Println("initial expectations:", initExpectations)
 	fmt.Println("initial expectations from json file:", initExpectationJSONFile)
 	fmt.Println("loglevel:", logLevel)
+	fmt.Println("port:", port)
 	fmt.Println("tail:", flag.Args())
 
 	server := newGzServer()
@@ -184,5 +187,5 @@ func main() {
 	httpHandleWrapper(server.logLevel, "/gozzmock/remove_expectation", server.remove)
 	httpHandleWrapper(server.logLevel, "/gozzmock/get_expectations", server.get)
 	httpHandleWrapper(server.logLevel, "/", server.root)
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":"+port, nil)
 }
