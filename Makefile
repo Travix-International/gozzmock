@@ -22,16 +22,16 @@ clean:
 	go clean -i ./...
 	rm -f $(BINARY_NAME)
 	rm -f $(BINARY_NAME).exe
+	rm -f $(COVERFILENAME)*
 
 .PHONY: update
 update:
-	go get -u github.com/golang/dep/cmd/dep
-	dep ensure
+	go get -u 
 
 .PHONY: build-linux
 build-linux:
-	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o $(BINARY_NAME) .
+	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -mod vendor -o $(BINARY_NAME) .
 
 .PHONY: build-windows
 build-windows:
-	CGO_ENABLED=0 GOOS=windows go build -a -installsuffix cgo -o $(BINARY_NAME).exe .
+	CGO_ENABLED=0 GOOS=windows go build -a -installsuffix cgo -mod vendor -o $(BINARY_NAME).exe .

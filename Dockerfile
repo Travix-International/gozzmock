@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.9 as builder
+FROM golang:1.11 as builder
 
 LABEL maintainer="Travix"
 
@@ -7,7 +7,7 @@ COPY ./ /go/src/gozzmock
 
 WORKDIR /go/src/gozzmock
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o gozzmock_bin .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -mod vendor -o gozzmock_bin .
 
 # Run stage
 FROM scratch
