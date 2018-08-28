@@ -165,3 +165,7 @@ Structure of "response" block
 * /gozzmock/add_expectation - add or update an expectation
 * /gozzmock/remove_expectation - remove expectation by key
 * /gozzmock/get_expectations - get list of all stored expectations
+
+
+#TODO
+Add example with js
