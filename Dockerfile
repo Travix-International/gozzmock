@@ -7,7 +7,7 @@ COPY ./ /go/src/gozzmock
 
 WORKDIR /go/src/gozzmock
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -mod vendor -o gozzmock_bin .
+RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -a -installsuffix cgo -mod vendor -o gozzmock_bin .
 
 # Run stage
 FROM scratch
