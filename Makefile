@@ -26,12 +26,12 @@ clean:
 
 .PHONY: update
 update:
-	go get -u 
+	GO111MODULE=on go get -u 
 
 .PHONY: build-linux
 build-linux:
-	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -mod vendor -o $(BINARY_NAME) .
+	GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -mod vendor -o $(BINARY_NAME) .
 
 .PHONY: build-windows
 build-windows:
-	CGO_ENABLED=0 GOOS=windows go build -a -installsuffix cgo -mod vendor -o $(BINARY_NAME).exe .
+	GO111MODULE=on CGO_ENABLED=0 GOOS=windows go build -a -installsuffix cgo -mod vendor -o $(BINARY_NAME).exe .
