@@ -4,10 +4,10 @@ FROM golang:1.11 as builder
 LABEL maintainer="Travix"
 
 COPY ./ /go/src/gozzmock
-
+ENV GO111MODULE=on
 WORKDIR /go/src/gozzmock
-
-RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -a -installsuffix cgo -mod vendor -o gozzmock_bin .
+RUN go mod vendor
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -mod vendor -o gozzmock_bin .
 
 # Run stage
 FROM scratch
