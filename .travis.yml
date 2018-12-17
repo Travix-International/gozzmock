@@ -10,7 +10,7 @@ env:
 
 before_script:
   - go mod vendor
-  - go install -mod vendor github.com/mattn/goveralls
+  - go get -u github.com/mattn/goveralls
 
 script:
   - $HOME/gopath/bin/goveralls -service=travis-ci
