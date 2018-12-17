@@ -5,7 +5,8 @@ default: lint vet test
 
 .PHONY: test
 test:
-	go test -coverprofile=$(COVERFILENAME).out `go list ./...`
+	go mod vendor
+	go test -coverprofile=$(COVERFILENAME).out ./...
 	go tool cover -html=$(COVERFILENAME).out -o $(COVERFILENAME)_all.html
 	rm $(COVERFILENAME).out
 
@@ -26,7 +27,7 @@ clean:
 
 .PHONY: update
 update:
-	GO111MODULE=on go get -u 
+	go get -u 
 
 .PHONY: build-linux
 build-linux:

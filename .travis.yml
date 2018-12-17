@@ -5,10 +5,12 @@ sudo: false
 go:
   - "1.11"
 
+env:
+  - GO111MODULE=on
+
 before_script:
-  - env GO111MODULE=on
-  - go get -u github.com/mattn/goveralls
-  - go get -u
+  - go mod vendor
+  - go install -mod vendor github.com/mattn/goveralls
 
 script:
   - $HOME/gopath/bin/goveralls -service=travis-ci
