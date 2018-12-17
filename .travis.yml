@@ -3,10 +3,14 @@ language: go
 sudo: false
 
 go:
-  - 1.11
+  - "1.11"
+
+env:
+  - GO111MODULE=on
 
 before_script:
-  - go get github.com/mattn/goveralls
+  - go mod vendor
+  - go get -u github.com/mattn/goveralls
 
 script:
   - $HOME/gopath/bin/goveralls -service=travis-ci

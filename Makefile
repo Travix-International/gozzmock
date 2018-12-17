@@ -5,17 +5,18 @@ default: lint vet test
 
 .PHONY: test
 test:
-	go test -coverprofile=$(COVERFILENAME).out `go list ./... | grep -v /vendor/`
+	go mod vendor
+	go test -coverprofile=$(COVERFILENAME).out ./...
 	go tool cover -html=$(COVERFILENAME).out -o $(COVERFILENAME)_all.html
 	rm $(COVERFILENAME).out
 
 .PHONY: lint
 lint:
-	golint `go list ./... | grep -v /vendor/`
+	golint `go list ./...`
 
 .PHONY: vet
 vet:
-	go vet `go list ./... | grep -v /vendor/`
+	go vet `go list ./...`
 
 .PHONY: clean
 clean:
@@ -30,8 +31,8 @@ update:
 
 .PHONY: build-linux
 build-linux:
-	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -mod vendor -o $(BINARY_NAME) .
+	GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -mod vendor -o $(BINARY_NAME) .
 
 .PHONY: build-windows
 build-windows:
-	CGO_ENABLED=0 GOOS=windows go build -a -installsuffix cgo -mod vendor -o $(BINARY_NAME).exe .
+	GO111MODULE=on CGO_ENABLED=0 GOOS=windows go build -a -installsuffix cgo -mod vendor -o $(BINARY_NAME).exe .

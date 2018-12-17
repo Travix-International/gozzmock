@@ -32,9 +32,8 @@ func TestGzServerTranslateRequestToExpectation_SimpleRequest_AllFieldsTranslated
 	assert.Equal(t, "POST", exp.Method)
 	assert.Equal(t, "/a/b?foo=bar#fr", exp.Path)
 	assert.Equal(t, "body text", exp.Body)
-	assert.NotNil(t, exp.Headers)
-	assert.Equal(t, 1, len(*exp.Headers))
-	assert.Equal(t, "hv1", (*exp.Headers)["H1"])
+	assert.Equal(t, 1, len(exp.Headers))
+	assert.Equal(t, "hv1", exp.Headers["H1"])
 }
 
 func TestGzServerTranslateHTTPHeadersToExpHeaders_TwoHeaders_HeadersTranslated(t *testing.T) {
@@ -43,9 +42,8 @@ func TestGzServerTranslateHTTPHeadersToExpHeaders_TwoHeaders_HeadersTranslated(t
 	header.Add("h1", "hv2")
 
 	expHeaders := translateHTTPHeadersToExpHeaders(header)
-	assert.NotNil(t, expHeaders)
-	assert.Equal(t, 1, len(*expHeaders))
-	assert.Equal(t, "hv1,hv2", (*expHeaders)["H1"])
+	assert.Equal(t, 1, len(expHeaders))
+	assert.Equal(t, "hv1,hv2", expHeaders["H1"])
 }
 
 func TestGzServerControllerStringPassesFilter_EmptyFilter_True(t *testing.T) {
@@ -98,32 +96,32 @@ func TestGzServerControllerRequestPassFilter_MethodsNotEqAndPathsAreEq_False(t *
 
 func TestGzServerControllerRequestPassFilter_HeadersAreEq_True(t *testing.T) {
 	assert.True(t, controllerRequestPassesFilter(
-		&ExpectationRequest{Headers: &Headers{"h1": "hv1"}},
-		&ExpectationRequest{Headers: &Headers{"h1": "hv1"}}))
+		&ExpectationRequest{Headers: Headers{"h1": "hv1"}},
+		&ExpectationRequest{Headers: Headers{"h1": "hv1"}}))
 }
 
 func TestGzServerControllerRequestPassFilter_HeaderNotEq_False(t *testing.T) {
 	result := controllerRequestPassesFilter(
-		&ExpectationRequest{Headers: &Headers{"h1": "hv1"}},
-		&ExpectationRequest{Headers: &Headers{"h2": "hv2"}})
+		&ExpectationRequest{Headers: Headers{"h1": "hv1"}},
+		&ExpectationRequest{Headers: Headers{"h2": "hv2"}})
 	assert.False(t, result)
 }
 
 func TestGzServerControllerRequestPassFilter_HeaderValueNotEq_False(t *testing.T) {
 	assert.False(t, controllerRequestPassesFilter(
-		&ExpectationRequest{Headers: &Headers{"h1": "hv1"}},
-		&ExpectationRequest{Headers: &Headers{"h1": "hv2"}}))
+		&ExpectationRequest{Headers: Headers{"h1": "hv1"}},
+		&ExpectationRequest{Headers: Headers{"h1": "hv2"}}))
 }
 
 func TestGzServerControllerRequestPassFilter_NoHeaderinReq_False(t *testing.T) {
 	assert.False(t, controllerRequestPassesFilter(
 		&ExpectationRequest{},
-		&ExpectationRequest{Headers: &Headers{"h2": "hv2"}}))
+		&ExpectationRequest{Headers: Headers{"h2": "hv2"}}))
 }
 
 func TestGzServerControllerRequestPassFilter_NoHeaderInFilter_True(t *testing.T) {
 	assert.True(t, controllerRequestPassesFilter(
-		&ExpectationRequest{Headers: &Headers{"h1": "hv1"}},
+		&ExpectationRequest{Headers: Headers{"h1": "hv1"}},
 		&ExpectationRequest{}))
 }
 
@@ -134,8 +132,8 @@ func TestGzServerControllerRequestPassFilter_BodysEq_True(t *testing.T) {
 }
 
 func TestGzServerControllerCreateHTTPRequestWithHeaders(t *testing.T) {
-	expReq := &ExpectationRequest{Method: "GET", Path: "/request", Headers: &Headers{"h_req": "hv_req"}}
-	expFwd := &ExpectationForward{Scheme: "https", Host: "localhost_fwd", Headers: &Headers{"h_req": "hv_fwd", "h_fwd": "hv_fwd"}}
+	expReq := &ExpectationRequest{Method: "GET", Path: "/request", Headers: Headers{"h_req": "hv_req"}}
+	expFwd := &ExpectationForward{Scheme: "https", Host: "localhost_fwd", Headers: Headers{"h_req": "hv_fwd", "h_fwd": "hv_fwd"}}
 	httpReq := controllerCreateHTTPRequest(expReq, expFwd)
 	assert.NotNil(t, httpReq)
 	assert.Equal(t, expReq.Method, httpReq.Method)
@@ -147,7 +145,7 @@ func TestGzServerControllerCreateHTTPRequestWithHeaders(t *testing.T) {
 
 func TestGzServerControllerCreateHTTPRequestHostRewrite(t *testing.T) {
 	expReq := &ExpectationRequest{Method: "GET", Path: "/request"}
-	expFwd := &ExpectationForward{Scheme: "https", Host: "localhost_fwd", Headers: &Headers{"Host": "fwd_host"}}
+	expFwd := &ExpectationForward{Scheme: "https", Host: "localhost_fwd", Headers: Headers{"Host": "fwd_host"}}
 	httpReq := controllerCreateHTTPRequest(expReq, expFwd)
 	assert.NotNil(t, httpReq)
 	assert.Equal(t, "fwd_host", httpReq.Host)
@@ -168,11 +166,18 @@ type gzMockedHTTPClient struct {
 }
 
 func (gzClient *gzMockedHTTPClient) do(req *http.Request) (*http.Response, error) {
-	bodyString := req.URL.String() + " Host:" + req.Host
+	var sb strings.Builder
+	sb.WriteString(req.URL.String())
+	sb.WriteString(" Host:")
+	sb.WriteString(req.Host)
 	for k, v := range req.Header {
-		bodyString += " " + k + ":" + strings.Join(v, ",")
+		sb.WriteString(" ")
+		sb.WriteString(k)
+		sb.WriteString(":")
+		sb.WriteString(strings.Join(v, ","))
 	}
-	body := ioutil.NopCloser(strings.NewReader(bodyString))
+	
+	body := ioutil.NopCloser(strings.NewReader(sb.String()))
 	response := &http.Response{StatusCode: 200, Body: body}
 	return response, nil
 }
@@ -333,7 +338,7 @@ func TestHandlerRoot_ForwardValidatrHeaders(t *testing.T) {
 	server := newMockedGzServer()
 	exp1 := Expectation{
 		Key:      "forward",
-		Forward:  &ExpectationForward{Scheme: "https", Host: "local.xx", Headers: &Headers{"Host": "fwd_host"}},
+		Forward:  &ExpectationForward{Scheme: "https", Host: "local.xx", Headers: Headers{"Host": "fwd_host"}},
 		Priority: 0}
 
 	server.storage.add(exp1.Key, exp1)

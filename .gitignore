@@ -21,3 +21,6 @@ cover*.*
 
 # dep backup
 _vendor*/
+
+# vendor folder
+vendor/
