@@ -21,25 +21,25 @@ type Headers map[string]string
 
 // ExpectationRequest is filter for incoming requests
 type ExpectationRequest struct {
-	Method  string   `json:"method"`
-	Path    string   `json:"path"`
-	Body    string   `json:"body"`
-	Headers *Headers `json:"headers,omitempty"`
+	Method  string  `json:"method"`
+	Path    string  `json:"path"`
+	Body    string  `json:"body"`
+	Headers Headers `json:"headers,omitempty"`
 }
 
 // ExpectationForward is forward action if request passes filter
 type ExpectationForward struct {
-	Scheme  string   `json:"scheme"`
-	Host    string   `json:"host"`
-	Headers *Headers `json:"headers,omitempty"`
+	Scheme  string  `json:"scheme"`
+	Host    string  `json:"host"`
+	Headers Headers `json:"headers,omitempty"`
 }
 
 // ExpectationResponse is response action if request passes filter
 type ExpectationResponse struct {
-	HTTPCode   int      `json:"httpcode"`
-	Body       string   `json:"body"`
-	Headers    *Headers `json:"headers,omitempty"`
-	JsTemplate string   `json:"jstemplate,omitempty"`
+	HTTPCode   int     `json:"httpcode"`
+	Body       string  `json:"body"`
+	Headers    Headers `json:"headers,omitempty"`
+	JsTemplate string  `json:"jstemplate,omitempty"`
 }
 
 // Expectation is single set of rules: expected request and prepared action
@@ -76,7 +76,7 @@ func ExpectationsFromString(str string) []Expectation {
 		panic(err)
 	}
 	for _, exp := range exps {
-		expectationSetDefaultValues(&exp)
+		exp.setDefaultValues()
 	}
 	return exps
 }
@@ -94,13 +94,13 @@ func ExpectationsFromJSONFile(file string) []Expectation {
 		panic(err)
 	}
 	for _, exp := range exps {
-		expectationSetDefaultValues(&exp)
+		exp.setDefaultValues()
 	}
 	return exps
 }
 
 // expectationSetDefaultValues sets default values after deserialization
-func expectationSetDefaultValues(exp *Expectation) {
+func (exp *Expectation) setDefaultValues() {
 	if exp.Forward != nil && exp.Forward.Scheme == "" {
 		exp.Forward.Scheme = "http"
 	}

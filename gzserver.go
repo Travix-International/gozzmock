@@ -55,7 +55,7 @@ func (server *gzServer) add(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expectationSetDefaultValues(&exp)
+	exp.setDefaultValues()
 
 	server.storage.add(exp.Key, exp)
 	fmt.Fprintf(w, "Expectation with key '%s' was added", exp.Key)
@@ -72,8 +72,7 @@ func (server *gzServer) remove(w http.ResponseWriter, r *http.Request) {
 	}
 
 	requestBody := ExpectationRemove{}
-	bodyDecoder := json.NewDecoder(r.Body)
-	err := bodyDecoder.Decode(&requestBody)
+	err := ObjectFromJSON(r.Body, &requestBody)
 	if err != nil {
 		fLog.Panic().Err(err)
 		reportError(w)
@@ -146,13 +145,13 @@ func controllerRequestPassesFilter(req *ExpectationRequest, storedExpectation *E
 		return false
 	}
 
-	if storedExpectation.Headers != nil {
-		if req.Headers == nil {
+	if len(storedExpectation.Headers) > 0 {
+		if len(req.Headers) == 0 {
 			fLog.Debug().Msgf("Request is expected to contain headers")
 			return false
 		}
-		for storedHeaderName, storedHeaderValue := range *storedExpectation.Headers {
-			value, ok := (*req.Headers)[storedHeaderName]
+		for storedHeaderName, storedHeaderValue := range storedExpectation.Headers {
+			value, ok := req.Headers[storedHeaderName]
 			if !ok {
 				fLog.Debug().Msgf("No header %s in the request headers %v", storedHeaderName, req.Headers)
 				return false
@@ -183,14 +182,14 @@ func controllerCreateHTTPRequest(req *ExpectationRequest, fwd *ExpectationForwar
 		return nil
 	}
 
-	if req.Headers != nil {
-		for name, value := range *req.Headers {
+	if len(req.Headers) > 0 {
+		for name, value := range req.Headers {
 			httpReq.Header.Set(name, value)
 		}
 	}
 
-	if fwd.Headers != nil {
-		for name, value := range *fwd.Headers {
+	if len(fwd.Headers) > 0 {
+		for name, value := range fwd.Headers {
 			if name == "Host" {
 				fLog.Debug().Msgf("Set host to %s in request", value)
 				httpReq.Host = value
@@ -204,12 +203,12 @@ func controllerCreateHTTPRequest(req *ExpectationRequest, fwd *ExpectationForwar
 }
 
 // translateHTTPHeadersToExpHeaders translates http headers into custom headers map
-func translateHTTPHeadersToExpHeaders(httpHeader http.Header) *Headers {
+func translateHTTPHeadersToExpHeaders(httpHeader http.Header) Headers {
 	headers := Headers{}
 	for name, headerLine := range httpHeader {
 		headers[name] = strings.Join(headerLine, ",")
 	}
-	return &headers
+	return headers
 }
 
 // translateRequestToExpectation Translates http request to expectation request
@@ -293,7 +292,7 @@ func createResponseFromExpectation(w http.ResponseWriter, resp *ExpectationRespo
 	fLog := log.With().Str("message_type", "createResponseFromExpectation").Logger()
 
 	if resp.Headers != nil {
-		for name, value := range *resp.Headers {
+		for name, value := range resp.Headers {
 			w.Header().Set(name, value)
 		}
 	}
@@ -342,7 +341,7 @@ func (server *gzServer) doHTTPRequest(w http.ResponseWriter, httpReq *http.Reque
 	// Changing the header map after a call to WriteHeader (or
 	// Write) has no effect unless the modified headers are
 	// trailers.
-	headers := *translateHTTPHeadersToExpHeaders(resp.Header)
+	headers := translateHTTPHeadersToExpHeaders(resp.Header)
 	for name, value := range headers {
 		w.Header().Set(name, value)
 	}
