@@ -5,17 +5,17 @@ default: lint vet test
 
 .PHONY: test
 test:
-	go test -coverprofile=$(COVERFILENAME).out `go list ./... | grep -v /vendor/`
+	go test -coverprofile=$(COVERFILENAME).out `go list ./...`
 	go tool cover -html=$(COVERFILENAME).out -o $(COVERFILENAME)_all.html
 	rm $(COVERFILENAME).out
 
 .PHONY: lint
 lint:
-	golint `go list ./... | grep -v /vendor/`
+	golint `go list ./...`
 
 .PHONY: vet
 vet:
-	go vet `go list ./... | grep -v /vendor/`
+	go vet `go list ./...`
 
 .PHONY: clean
 clean:
