@@ -14,6 +14,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Headers are HTTP headers
@@ -183,6 +184,7 @@ func main() {
 	}
 
 	http.HandleFunc("/gozzmock/status", server.status)
+	http.Handle("/metrics", promhttp.Handler())
 	httpHandleWrapper(server.logLevel, "/gozzmock/add_expectation", server.add)
 	httpHandleWrapper(server.logLevel, "/gozzmock/remove_expectation", server.remove)
 	httpHandleWrapper(server.logLevel, "/gozzmock/get_expectations", server.get)
