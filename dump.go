@@ -85,7 +85,8 @@ func dumpCompressedResponse(resp *http.Response, body bool) ([]byte, error) {
 			return nil, err
 		}
 
-		reader, err := gzip.NewReader(resp.Body)
+		var reader *gzip.Reader
+		reader, err = gzip.NewReader(resp.Body)
 		if err != nil {
 			return nil, err
 		}
