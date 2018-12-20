@@ -330,8 +330,9 @@ func (server *gzServer) doHTTPRequest(w http.ResponseWriter, httpReq *http.Reque
 		reportError(w)
 		return
 	}
-
-	defer resp.Body.Close()
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 
 	if server.logLevel == zerolog.DebugLevel {
 		dumpResponse(resp)
