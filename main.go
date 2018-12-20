@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -148,23 +147,31 @@ func toZeroLogLevel(logLevel string) zerolog.Level {
 }
 
 func main() {
-	var initExpectations string
-	flag.StringVar(&initExpectations, "expectations", "[]", "set initial expectations")
-	var initExpectationJSONFile string
-	flag.StringVar(&initExpectationJSONFile, "expectationsFile", "", "set path to json file with expectations")
-	var logLevel string
-	flag.StringVar(&logLevel, "loglevel", "debug", "set log level: debug, info, warn, error, fatal, panic")
-	var port string
-	flag.StringVar(&port, "port", "8080", "default port to run: 8080")
-	flag.Parse()
+	// JSON data with expectation
+	initExpectations := os.Getenv("EXPECTATIONS")
+	
+	// set path to file with expectations in JSON
+	initExpectationJSONFile := os.Getenv("EXPECTATIONSFile")
+	
+	// set log level: debug, info, warn, error, fatal, panic
+	logLevel := os.Getenv("LOGLEVEL")
+	if len(logLevel) == 0 {
+		logLevel = "debug"
+	}
+
+	//default port to run: 8080
+	port := os.Getenv("PORT")
+	if len(port) == 0 {
+		port = "8080"
+	}
+
 
 	fmt.Println("Arguments:")
 	fmt.Println("initial expectations:", initExpectations)
 	fmt.Println("initial expectations from json file:", initExpectationJSONFile)
 	fmt.Println("loglevel:", logLevel)
 	fmt.Println("port:", port)
-	fmt.Println("tail:", flag.Args())
-
+	
 	server := newGzServer()
 	server.logLevel = toZeroLogLevel(logLevel)
 
