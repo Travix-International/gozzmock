@@ -148,19 +148,19 @@ func toZeroLogLevel(logLevel string) zerolog.Level {
 
 func main() {
 	// JSON data with expectation
-	initExpectations := os.Getenv("EXPECTATIONS")
+	initExpectations := os.Getenv("GOZ_EXPECTATIONS")
 	
 	// set path to file with expectations in JSON
-	initExpectationJSONFile := os.Getenv("EXPECTATIONSFile")
+	initExpectationJSONFile := os.Getenv("GOZ_EXPECTATIONS_FILE")
 	
 	// set log level: debug, info, warn, error, fatal, panic
-	logLevel := os.Getenv("LOGLEVEL")
+	logLevel := os.Getenv("GOZ_LOGLEVEL")
 	if len(logLevel) == 0 {
 		logLevel = "debug"
 	}
 
 	//default port to run: 8080
-	port := os.Getenv("PORT")
+	port := os.Getenv("GOZ_PORT")
 	if len(port) == 0 {
 		port = "8080"
 	}
