@@ -165,7 +165,7 @@ func httpNewRequestMust(method, url string, body io.Reader) *http.Request {
 type gzMockedHTTPClient struct {
 }
 
-func (gzClient *gzMockedHTTPClient) do(req *http.Request) (*http.Response, error) {
+func (gzClient *gzMockedHTTPClient) roundTrip(req *http.Request) (*http.Response, error) {
 	var sb strings.Builder
 	sb.WriteString(req.URL.String())
 	sb.WriteString(" Host:")
@@ -176,7 +176,7 @@ func (gzClient *gzMockedHTTPClient) do(req *http.Request) (*http.Response, error
 		sb.WriteString(":")
 		sb.WriteString(strings.Join(v, ","))
 	}
-	
+
 	body := ioutil.NopCloser(strings.NewReader(sb.String()))
 	response := &http.Response{StatusCode: 200, Body: body}
 	return response, nil
@@ -358,7 +358,7 @@ func TestHandlerRoot_ForwardValidatrHeaders(t *testing.T) {
 type gzMockedGzipHTTPClient struct {
 }
 
-func (gzClient *gzMockedGzipHTTPClient) do(req *http.Request) (*http.Response, error) {
+func (gzClient *gzMockedGzipHTTPClient) roundTrip(req *http.Request) (*http.Response, error) {
 	resp := http.Response{
 		Header: make(http.Header)}
 
