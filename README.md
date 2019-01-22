@@ -32,7 +32,7 @@ Package manager: [dep](https://github.com/golang/dep)
 
 ## Example
 ```
-GOZ_EXPECTATIONS="[{\"key\": \"k1\"},{\"key\": \"k2\"}]" GOZ_LOGLEVEL="info" docker run -it -p8080:8080 travix/gozzmock
+docker run -it -p8080:8080 --env GOZ_EXPECTATIONS="[{\"key\": \"k1\"},{\"key\": \"k2\"}]" --env GOZ_LOGLEVEL="info" travix/gozzmock
 ```
 
 # Use-cases
