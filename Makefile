@@ -5,7 +5,7 @@ default: lint vet test
 
 .PHONY: test
 test:
-	go mod vendor
+	go mod download
 	go test -coverprofile=$(COVERFILENAME).out ./...
 	go tool cover -html=$(COVERFILENAME).out -o $(COVERFILENAME)_all.html
 	rm $(COVERFILENAME).out
@@ -31,10 +31,8 @@ update:
 
 .PHONY: build-linux
 build-linux:
-	go mod download
 	GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build -a -o $(BINARY_NAME) .
 
 .PHONY: build-windows
 build-windows:
-	go mod download
 	GO111MODULE=on CGO_ENABLED=0 GOOS=windows go build -a -installsuffix cgo -mod vendor -o $(BINARY_NAME).exe .
