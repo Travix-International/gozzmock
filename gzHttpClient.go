@@ -5,18 +5,18 @@ import (
 )
 
 type httpClient interface {
-	do(req *http.Request) (*http.Response, error)
+	roundTrip(req *http.Request) (*http.Response, error)
 }
 
 type gzHTTPClient struct {
-	httpClient *http.Client
+	roundTripper http.RoundTripper
+}
+
+func (gzClient *gzHTTPClient) roundTrip(req *http.Request) (*http.Response, error) {
+	return gzClient.roundTripper.RoundTrip(req)
 }
 
 func newGzHTTPClient() *gzHTTPClient {
 	return &gzHTTPClient{
-		httpClient: &http.Client{}}
-}
-
-func (gzClient *gzHTTPClient) do(req *http.Request) (*http.Response, error) {
-	return gzClient.httpClient.Do(req)
+		roundTripper: http.DefaultTransport}
 }

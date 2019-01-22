@@ -324,15 +324,18 @@ func (server *gzServer) doHTTPRequest(w http.ResponseWriter, httpReq *http.Reque
 		dumpRequest(httpReq)
 	}
 
-	resp, err := server.httpClient.do(httpReq)
+	resp, err := server.httpClient.roundTrip(httpReq)
 	if err != nil {
 		fLog.Panic().Err(err)
 		reportError(w)
 		return
 	}
-	if resp != nil {
-		defer resp.Body.Close()
+
+	if resp == nil {
+		fLog.Panic().Msg("response is nil")
+		return
 	}
+	defer resp.Body.Close()
 
 	if server.logLevel == zerolog.DebugLevel {
 		dumpResponse(resp)

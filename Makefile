@@ -1,11 +1,11 @@
 COVERFILENAME:=cover
-BINARY_NAME:=gozzmock
+BINARY_NAME:=gozzmock_bin
 
 default: lint vet test
 
 .PHONY: test
 test:
-	go mod vendor
+	go mod download
 	go test -coverprofile=$(COVERFILENAME).out ./...
 	go tool cover -html=$(COVERFILENAME).out -o $(COVERFILENAME)_all.html
 	rm $(COVERFILENAME).out
@@ -31,7 +31,7 @@ update:
 
 .PHONY: build-linux
 build-linux:
-	GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -mod vendor -o $(BINARY_NAME) .
+	GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build -a -o $(BINARY_NAME) .
 
 .PHONY: build-windows
 build-windows:
