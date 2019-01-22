@@ -23,7 +23,19 @@ Package manager: [dep](https://github.com/golang/dep)
  docker pull travix/gozzmock
 ```
 
-# Examples
+# Environment variables
+* *GOZ_LOGLEVEL* - log level. Values: debug, info, warn, error, fatal, panic. Default: debug
+* *GOZ_EXPECTATIONS* - array of expectations is json format. Default: empty. It is used to load default/forward expectations when appication starts.
+* *GOZ_EXPECTATIONS_FILE* - a path to json file with expectations.
+* *GOZ_PORT* - port number at local machine for http server 
+* *HTTP_PROXY*, *HTTPS_PROXY* - http proxy configuration. May be either a complete URL or a "host[:port]". Detailed description: https://golang.org/src/net/http/transport.go
+
+## Example
+```
+GOZ_EXPECTATIONS="[{\"key\": \"k1\"},{\"key\": \"k2\"}]" GOZ_LOGLEVEL="info" docker run -it -p8080:8080 travix/gozzmock
+```
+
+# Use-cases
 For instance, there is a task to mock GitHub API call https://api.github.com/user
 By default, /user returns
 ```json
@@ -113,20 +125,9 @@ To remove expectation, send request to /gozzmock/remove_expectation with structu
 curl -d '{"key":"responseExpectation"}' -X POST http://192.168.99.100:8080/gozzmock/remove_expectation
 ```
 
+# Expectations structure
 
-# Arguments
-*loglevel* - log level. Values: debug, info, warn, error, fatal, panic. Default: debug
-*expectations* - array of expectations is json format. Default: empty. It is used to load default/forward expectations when appication starts.
-
-# Example
-```
-docker run -it -p8080:8080 travix/gozzmock --expectations="[{\"key\": \"k1\"},{\"key\": \"k2\"}]" --loglevel=info
-```
-
-
-# Structure of expectations
-
-# Root level 
+## Root level 
 * key - unique identifier for message. If another expectation is added with same key, original will be replaced
 * priority (optional) - is used to define order. First expectation has greatest priority.
 * dealy (optional) - delay in seconds before sending response
@@ -136,7 +137,7 @@ docker run -it -p8080:8080 travix/gozzmock --expectations="[{\"key\": \"k1\"},{\
 
 *NOTE* only one block should be set: response or forward
 
-# Request
+## Request
 Structure of "request" block
 * method - HTTP method: POST, GET, ...
 * path - path, including query (?) and fragments (#) 
@@ -146,13 +147,13 @@ Structure of "request" block
 *NOTE* It is allowed to use regex as well as simple string.
 For instance, if path: ".*" - it will be parsed as regex. if string "abc" - it will be used as substring
 
-# Forward
+## Forward
 Structure of "forward" block
 * Scheme - HTTP or HTTPS
 * host - target host name. Host name of original request will be replaced with this value. Path and query will be same.
 * headers - headers which will be added/replaced when forwarding
 
-# Response
+## Response
 Structure of "response" block
 * method - HTTP method: POST, GET, ...
 * path - path, including query (?) and fragments (#) 
@@ -160,7 +161,7 @@ Structure of "response" block
 * headers - headers in response
 
 
-# Endpoints
+## Endpoints
 * /gozzmock/status - status and readiness endpoint
 * /gozzmock/add_expectation - add or update an expectation
 * /gozzmock/remove_expectation - remove expectation by key
