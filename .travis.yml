@@ -9,7 +9,7 @@ env:
   - GO111MODULE=on
 
 before_script:
-  - go mod vendor
+  - go mod download
   - go get -u github.com/mattn/goveralls
 
 script:
