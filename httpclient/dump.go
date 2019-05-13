@@ -1,4 +1,4 @@
-package main
+package httpclient
 
 import (
 	"bytes"
@@ -13,8 +13,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// dumpRequest dumps http request and writes content to log
-func dumpRequest(req *http.Request) {
+// DumpRequest dumps http request and writes content to log
+func DumpRequest(req *http.Request) {
 	fLog := log.With().Str("message_type", "dumpRequest").Logger()
 	reqDumped, err := httputil.DumpRequest(req, true)
 	if err != nil {
@@ -45,7 +45,7 @@ func drainBody(b io.ReadCloser) (r1, r2 io.ReadCloser, err error) {
 	return ioutil.NopCloser(&buf), ioutil.NopCloser(bytes.NewReader(buf.Bytes())), nil
 }
 
-// dumpCompressedResponse is the same as DumpRequest from httputil
+// DumpCompressedResponse is the same as DumpRequest from httputil
 // dump.go but for gzipped body
 //
 // DumpRequest returns the given request in its HTTP/1.x wire
@@ -64,7 +64,7 @@ func drainBody(b io.ReadCloser) (r1, r2 io.ReadCloser, err error) {
 //
 // The documentation for http.Request.Write details which fields
 // of req are included in the dump.
-func dumpCompressedResponse(resp *http.Response, body bool) ([]byte, error) {
+func DumpCompressedResponse(resp *http.Response, body bool) ([]byte, error) {
 	var b bytes.Buffer
 	var err error
 	// emptyBody is an instance of empty reader.
@@ -104,13 +104,13 @@ func dumpCompressedResponse(resp *http.Response, body bool) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// dumpResponse dumps http response and writes content to log
-func dumpResponse(resp *http.Response) {
+// DumpResponse dumps http response and writes content to log
+func DumpResponse(resp *http.Response) {
 	fLog := log.With().Str("message_type", "dumpResponse").Logger()
 	var respDumped []byte
 	var err error
 	if resp.Header.Get("Content-Encoding") == "gzip" {
-		respDumped, err = dumpCompressedResponse(resp, true)
+		respDumped, err = DumpCompressedResponse(resp, true)
 	} else {
 		respDumped, err = httputil.DumpResponse(resp, true)
 	}

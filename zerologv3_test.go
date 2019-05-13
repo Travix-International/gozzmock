@@ -10,7 +10,6 @@ import (
 )
 
 func TestV3LogEmptyMessage(t *testing.T) {
-	// Arrange
 	var outbuf bytes.Buffer
 	v3logger := zerolog.New(V3FormatWriter{Out: &outbuf})
 
@@ -29,7 +28,6 @@ func returnFixedTimestamp() time.Time {
 }
 
 func TestV3LogAllV3Fields(t *testing.T) {
-	// Arrange
 	var outbuf bytes.Buffer
 	v3logger := zerolog.New(V3FormatWriter{Out: &outbuf}).
 		With().
@@ -50,7 +48,6 @@ func TestV3LogAllV3Fields(t *testing.T) {
 }
 
 func TestV3LogCustomField(t *testing.T) {
-	// Arrange
 	var outbuf bytes.Buffer
 	v3logger := zerolog.New(V3FormatWriter{Out: &outbuf}).
 		With().

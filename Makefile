@@ -1,7 +1,7 @@
 COVERFILENAME:=cover
 BINARY_NAME:=gozzmock_bin
 
-default: lint vet test
+default: lint vet test clean
 
 .PHONY: test
 test:
@@ -20,6 +20,7 @@ vet:
 
 .PHONY: clean
 clean:
+	go mod tidy
 	go clean -i ./...
 	rm -f $(BINARY_NAME)
 	rm -f $(BINARY_NAME).exe
