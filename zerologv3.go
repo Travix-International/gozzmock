@@ -10,14 +10,14 @@ Example of log message in v3 format:
     "log_format": "v3",
     "metadata": {
         "log_level": "DEBUG",
-        "message_type": "function_name",
+        "messagetype": "function_name",
         "timestamp": "2006-01-02T15:04:05Z07:00"
     },
     "payload": {
         "message": "message_text"
     },
     "source": {
-        "app_name": "gozzmock"
+        "appname": "gozzmock"
     }
 }
 */
@@ -33,14 +33,14 @@ import (
 
 type metadata struct {
 	LogLevel    string `json:"log_level"`
-	MessageType string `json:"message_type"`
+	MessageType string `json:"messagetype"`
 	Timestamp   string `json:"timestamp"`
 }
 
 type payload map[string]string
 
 type source struct {
-	AppName string `json:"app_name"`
+	AppName string `json:"appname"`
 }
 
 type v3LogMessage struct {
@@ -79,9 +79,9 @@ func (w V3FormatWriter) Write(p []byte) (n int, err error) {
 			logMessage.Metadata.LogLevel = strings.ToUpper(value.(string))
 		case zerolog.TimestampFieldName:
 			logMessage.Metadata.Timestamp = value.(string)
-		case "message_type":
+		case "messagetype":
 			logMessage.Metadata.MessageType = value.(string)
-		case "app_name":
+		case "appname":
 			logMessage.Source.AppName = value.(string)
 		case zerolog.MessageFieldName:
 			logMessage.Payload["message"] = value.(string)

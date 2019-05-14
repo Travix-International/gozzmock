@@ -1,4 +1,4 @@
-package main
+package httpclient
 
 import (
 	"bytes"
@@ -10,18 +10,17 @@ import (
 	"net/http/httputil"
 	"strings"
 
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 )
 
-// dumpRequest dumps http request and writes content to log
-func dumpRequest(req *http.Request) {
-	fLog := log.With().Str("message_type", "dumpRequest").Logger()
+// DumpRequest dumps http request and writes content to log
+func DumpRequest(logger zerolog.Logger, req *http.Request) {
 	reqDumped, err := httputil.DumpRequest(req, true)
 	if err != nil {
-		fLog.Panic().Err(err)
+		logger.Error().Err(err).Msg("Error dump request")
 		return
 	}
-	fLog.Debug().Str("messagetype", "Request").Msg(string(reqDumped))
+	logger.Debug().Msg(string(reqDumped))
 }
 
 // drainBody is copied from dump.go
@@ -104,9 +103,8 @@ func dumpCompressedResponse(resp *http.Response, body bool) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// dumpResponse dumps http response and writes content to log
-func dumpResponse(resp *http.Response) {
-	fLog := log.With().Str("message_type", "dumpResponse").Logger()
+// DumpResponse dumps http response and writes content to log
+func DumpResponse(logger zerolog.Logger, resp *http.Response) {
 	var respDumped []byte
 	var err error
 	if resp.Header.Get("Content-Encoding") == "gzip" {
@@ -115,9 +113,9 @@ func dumpResponse(resp *http.Response) {
 		respDumped, err = httputil.DumpResponse(resp, true)
 	}
 	if err != nil {
-		fLog.Panic().Err(err)
+		logger.Error().Err(err).Msg("Error dump response")
 		return
 	}
 
-	fLog.Debug().Str("messagetype", "DumpedResponse").Msg(string(respDumped))
+	logger.Debug().Msg(string(respDumped))
 }
