@@ -62,7 +62,7 @@ func (f *GzFilter) GetOrdered() OrderedExpectations {
 }
 
 func (f *GzFilter) Apply(r *http.Request) *HttpResponse {
-	fLog := log.With().Str("message_type", "generateResponseToResponseWriter").Logger()
+	fLog := log.With().Str("messagetype", "generateResponseToResponseWriter").Logger()
 	req, err := HttpRequestToExpectationRequest(r)
 	if err != nil {
 		return reportError()
@@ -88,7 +88,7 @@ func (f *GzFilter) Apply(r *http.Request) *HttpResponse {
 }
 
 func (f *GzFilter) applyExpectation(exp Expectation, req *ExpectationRequest) *HttpResponse {
-	fLog := log.With().Str("message_type", "applyExpectation").Str("key", exp.Key).Logger()
+	fLog := log.With().Str("messagetype", "applyExpectation").Str("key", exp.Key).Logger()
 
 	if exp.Delay > 0 {
 		fLog.Info().Msg(fmt.Sprintf("Delay %v sec", exp.Delay))
@@ -120,7 +120,7 @@ func responseFromExpectation(exp *ExpectationResponse, req *ExpectationRequest) 
 	// Changing the header map after a call to WriteHeader (or
 	// Write) has no effect unless the modified headers are
 	// trailers.
-	fLog := log.With().Str("message_type", "responseFromExpectation").Logger()
+	fLog := log.With().Str("messagetype", "responseFromExpectation").Logger()
 
 	resp := HttpResponse{HTTPCode: exp.HTTPCode}
 	if exp.Headers != nil {
@@ -168,7 +168,7 @@ func runJsTemplate(encodedTmpl string, req *ExpectationRequest) (string, error) 
 }
 
 func (f *GzFilter) doHTTPRequest(httpReq *http.Request) *HttpResponse {
-	fLog := log.With().Str("message_type", "doHTTPRequest").Logger()
+	fLog := log.With().Str("messagetype", "doHTTPRequest").Logger()
 
 	if httpReq == nil {
 		fLog.Panic().Msg("http.Request is nil")
@@ -176,7 +176,9 @@ func (f *GzFilter) doHTTPRequest(httpReq *http.Request) *HttpResponse {
 	}
 
 	if f.logLevel == zerolog.DebugLevel {
-		httpclient.DumpRequest(httpReq)
+		httpclient.DumpRequest(
+			log.With().Str("messagetype", "externalRequest").Logger(),
+			httpReq)
 	}
 
 	httpResp, err := f.roundTripper.RoundTrip(httpReq)
@@ -192,7 +194,9 @@ func (f *GzFilter) doHTTPRequest(httpReq *http.Request) *HttpResponse {
 	defer httpResp.Body.Close()
 
 	if f.logLevel == zerolog.DebugLevel {
-		httpclient.DumpResponse(httpResp)
+		httpclient.DumpResponse(
+			log.With().Str("messagetype", "externalResponse").Logger(),
+			httpResp)
 	}
 
 	resp, err := toCustomHttpResponse(httpResp)
@@ -235,7 +239,7 @@ func headersMatch(req Headers, exp Headers) bool {
 
 // expectationsMatch validates whether the incoming request passes particular filter
 func expectationsMatch(req *ExpectationRequest, exp *ExpectationRequest) bool {
-	fLog := log.With().Str("message_type", "controllerRequestPassesFilter").Logger()
+	fLog := log.With().Str("messagetype", "controllerRequestPassesFilter").Logger()
 
 	if exp == nil {
 		fLog.Debug().Msg("Match. Expectation is nil")
@@ -267,7 +271,7 @@ func expectationsMatch(req *ExpectationRequest, exp *ExpectationRequest) bool {
 
 // responseFromHTTPForward creates an http request based on incoming request and forward rules
 func (f *GzFilter) responseFromHTTPForward(req *ExpectationRequest, fwd *ExpectationForward) *HttpResponse {
-	fLog := log.With().Str("message_type", "responseFromHTTPForward").Logger()
+	fLog := log.With().Str("messagetype", "responseFromHTTPForward").Logger()
 
 	fwdURL, err := url.Parse(fmt.Sprintf("%s://%s%s", fwd.Scheme, fwd.Host, req.Path))
 	if err != nil {

@@ -18,7 +18,7 @@ func TestV3LogEmptyMessage(t *testing.T) {
 
 	// Assert
 	actualMessage := outbuf.String()
-	expectedMessage := `{"log_format":"v3","metadata":{"log_level":"INFO","message_type":"","timestamp":""},"payload":{},"source":{"app_name":""}}`
+	expectedMessage := `{"log_format":"v3","metadata":{"log_level":"INFO","messagetype":"","timestamp":""},"payload":{},"source":{"appname":""}}`
 	expectedMessage += "\n"
 	assert.Equal(t, expectedMessage, actualMessage)
 }
@@ -31,8 +31,8 @@ func TestV3LogAllV3Fields(t *testing.T) {
 	var outbuf bytes.Buffer
 	v3logger := zerolog.New(V3FormatWriter{Out: &outbuf}).
 		With().
-		Str("message_type", "MesssageTypeTest").
-		Str("app_name", "AppNameTest").
+		Str("messagetype", "MesssageTypeTest").
+		Str("appname", "AppNameTest").
 		Timestamp().
 		Logger()
 	zerolog.TimestampFunc = returnFixedTimestamp
@@ -42,7 +42,7 @@ func TestV3LogAllV3Fields(t *testing.T) {
 
 	// Assert
 	actualMessage := outbuf.String()
-	expectedMessage := `{"log_format":"v3","metadata":{"log_level":"DEBUG","message_type":"MesssageTypeTest","timestamp":"2009-11-17T20:34:58Z"},"payload":{"message":"Test"},"source":{"app_name":"AppNameTest"}}`
+	expectedMessage := `{"log_format":"v3","metadata":{"log_level":"DEBUG","messagetype":"MesssageTypeTest","timestamp":"2009-11-17T20:34:58Z"},"payload":{"message":"Test"},"source":{"appname":"AppNameTest"}}`
 	expectedMessage += "\n"
 	assert.Equal(t, expectedMessage, actualMessage)
 }
@@ -60,7 +60,7 @@ func TestV3LogCustomField(t *testing.T) {
 
 	// Assert
 	actualMessage := outbuf.String()
-	expectedMessage := `{"log_format":"v3","metadata":{"log_level":"DEBUG","message_type":"","timestamp":""},"payload":{"custom_field":"CustomField1"},"source":{"app_name":""}}`
+	expectedMessage := `{"log_format":"v3","metadata":{"log_level":"DEBUG","messagetype":"","timestamp":""},"payload":{"custom_field":"CustomField1"},"source":{"appname":""}}`
 	expectedMessage += "\n"
 	assert.Equal(t, expectedMessage, actualMessage)
 }

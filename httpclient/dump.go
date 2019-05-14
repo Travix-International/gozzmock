@@ -10,18 +10,17 @@ import (
 	"net/http/httputil"
 	"strings"
 
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 )
 
 // DumpRequest dumps http request and writes content to log
-func DumpRequest(req *http.Request) {
-	fLog := log.With().Str("message_type", "dumpRequest").Logger()
+func DumpRequest(logger zerolog.Logger, req *http.Request) {
 	reqDumped, err := httputil.DumpRequest(req, true)
 	if err != nil {
-		fLog.Panic().Err(err)
+		logger.Error().Err(err).Msg("Error dump request")
 		return
 	}
-	fLog.Debug().Str("messagetype", "Request").Msg(string(reqDumped))
+	logger.Debug().Msg(string(reqDumped))
 }
 
 // drainBody is copied from dump.go
@@ -45,7 +44,7 @@ func drainBody(b io.ReadCloser) (r1, r2 io.ReadCloser, err error) {
 	return ioutil.NopCloser(&buf), ioutil.NopCloser(bytes.NewReader(buf.Bytes())), nil
 }
 
-// DumpCompressedResponse is the same as DumpRequest from httputil
+// dumpCompressedResponse is the same as DumpRequest from httputil
 // dump.go but for gzipped body
 //
 // DumpRequest returns the given request in its HTTP/1.x wire
@@ -64,7 +63,7 @@ func drainBody(b io.ReadCloser) (r1, r2 io.ReadCloser, err error) {
 //
 // The documentation for http.Request.Write details which fields
 // of req are included in the dump.
-func DumpCompressedResponse(resp *http.Response, body bool) ([]byte, error) {
+func dumpCompressedResponse(resp *http.Response, body bool) ([]byte, error) {
 	var b bytes.Buffer
 	var err error
 	// emptyBody is an instance of empty reader.
@@ -105,19 +104,18 @@ func DumpCompressedResponse(resp *http.Response, body bool) ([]byte, error) {
 }
 
 // DumpResponse dumps http response and writes content to log
-func DumpResponse(resp *http.Response) {
-	fLog := log.With().Str("message_type", "dumpResponse").Logger()
+func DumpResponse(logger zerolog.Logger, resp *http.Response) {
 	var respDumped []byte
 	var err error
 	if resp.Header.Get("Content-Encoding") == "gzip" {
-		respDumped, err = DumpCompressedResponse(resp, true)
+		respDumped, err = dumpCompressedResponse(resp, true)
 	} else {
 		respDumped, err = httputil.DumpResponse(resp, true)
 	}
 	if err != nil {
-		fLog.Panic().Err(err)
+		logger.Error().Err(err).Msg("Error dump response")
 		return
 	}
 
-	fLog.Debug().Str("messagetype", "DumpedResponse").Msg(string(respDumped))
+	logger.Debug().Msg(string(respDumped))
 }

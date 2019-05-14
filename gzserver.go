@@ -32,7 +32,7 @@ func reportError(w http.ResponseWriter) {
 }
 
 func (s *gzServer) add(w http.ResponseWriter, r *http.Request) {
-	fLog := log.With().Str("message_type", "HandlerAddExpectation").Logger()
+	fLog := log.With().Str("messagetype", "HandlerAddExpectation").Logger()
 
 	if r.Method != "POST" {
 		fLog.Panic().Msgf("Wrong method %s", r.Method)
@@ -53,7 +53,7 @@ func (s *gzServer) add(w http.ResponseWriter, r *http.Request) {
 
 // HandlerRemoveExpectation handler parses request and deletes expectation from global expectations list
 func (s *gzServer) remove(w http.ResponseWriter, r *http.Request) {
-	fLog := log.With().Str("message_type", "HandlerRemoveExpectation").Logger()
+	fLog := log.With().Str("messagetype", "HandlerRemoveExpectation").Logger()
 
 	if r.Method != "POST" {
 		fLog.Panic().Msgf("Wrong method %s", r.Method)
@@ -73,7 +73,7 @@ func (s *gzServer) remove(w http.ResponseWriter, r *http.Request) {
 
 // HandlerGetExpectations handler parses request and returns global expectations list
 func (s *gzServer) get(w http.ResponseWriter, r *http.Request) {
-	fLog := log.With().Str("message_type", "HandlerGetExpectations").Logger()
+	fLog := log.With().Str("messagetype", "HandlerGetExpectations").Logger()
 
 	if r.Method != "GET" {
 		fLog.Panic().Msgf("Wrong method %s", r.Method)
@@ -115,7 +115,9 @@ func (s *gzServer) root(w http.ResponseWriter, r *http.Request) {
 func (s *gzServer) handle(pattern string, handler func(http.ResponseWriter, *http.Request)) {
 	wrappedHandler := func(w http.ResponseWriter, r *http.Request) {
 		if s.logLevel == zerolog.DebugLevel {
-			httpclient.DumpRequest(r)
+			httpclient.DumpRequest(
+				log.With().Str("messagetype", "request").Logger(),
+				r)
 		}
 
 		handler(w, r)
@@ -145,7 +147,7 @@ func toZeroLogLevel(logLevel string) zerolog.Level {
 	fmt.Println("set log level:", zlogLevel)
 	zerolog.SetGlobalLevel(zlogLevel)
 	log.Logger = log.Output(V3FormatWriter{Out: os.Stderr}).
-		With().Str("app_name", "gozzmock").Logger()
+		With().Str("appname", "gozzmock").Logger()
 	return zlogLevel
 }
 
