@@ -18,9 +18,3 @@ cover*.*
 
 # Visual studio code configuration
 .vscode/
-
-# dep backup
-_vendor*/
-
-# vendor folder
-vendor/
