@@ -1,0 +1,24 @@
+# https://estafette.io/usage/manifest/
+labels:
+  language: golang
+
+version:
+  semver:
+    major: 1
+    minor: 6
+
+stages:
+  bake:
+    image: extensions/docker:stable
+    action: build
+    repositories:
+    - travix
+    path: ./publish
+
+  push-to-docker-registry:
+    image: extensions/docker:stable
+    action: push
+    repositories:
+    - travix
+    tags:
+    - latest
