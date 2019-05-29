@@ -2,7 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
+
+	"github.com/uber/jaeger-client-go"
+	jaegercfg "github.com/uber/jaeger-client-go/config"
 )
 
 func main() {
@@ -17,6 +21,9 @@ func main() {
 	if len(logLevel) == 0 {
 		logLevel = "debug"
 	}
+
+	closer := initJaeger()
+	defer closer.Close()
 
 	//default port to run: 8080
 	port := os.Getenv("GOZ_PORT")
@@ -45,4 +52,29 @@ func main() {
 	}
 
 	server.serve(port)
+}
+
+// initJaeger returns an instance of Jaeger Tracer that can be configured with environment variables
+// https://github.com/jaegertracing/jaeger-client-go#environment-variables
+func initJaeger() io.Closer {
+
+	cfg, err := jaegercfg.FromEnv()
+	if err != nil {
+		panic(err)
+	}
+
+	if os.Getenv("JAEGER_AGENT_HOST") != "" {
+		// get remote config from jaeger-agent running as daemonset
+		if cfg != nil && cfg.Sampler != nil && os.Getenv("JAEGER_SAMPLER_MANAGER_HOST_PORT") == "" {
+			cfg.Sampler.SamplingServerURL = fmt.Sprintf("http://%v:5778/sampling", os.Getenv("JAEGER_AGENT_HOST"))
+		}
+	}
+
+	closer, err := cfg.InitGlobalTracer(cfg.ServiceName, jaegercfg.Logger(jaeger.StdLogger))
+
+	if err != nil {
+		panic(err)
+	}
+
+	return closer
 }
