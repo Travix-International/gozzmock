@@ -221,6 +221,17 @@ func stringsMatch(req string, exp string) bool {
 	return r.MatchString(req)
 }
 
+// findInMapCaseInsensitive looks up the specified key in the map using case-insensitive lookup
+func findInMapCaseInsensitive(m map[string]string, k string) (string, bool) {
+	for name, value := range m {
+		if strings.EqualFold(name, k) {
+			return value, true
+		}
+	}
+
+	return "", false
+}
+
 // headersMatch validates whether the input string has filter string as substring or as a regex
 func headersMatch(req Headers, exp Headers) bool {
 	if len(exp) == 0 {
@@ -228,7 +239,7 @@ func headersMatch(req Headers, exp Headers) bool {
 	}
 
 	for expName, expValue := range exp {
-		reqValue, ok := req[expName]
+		reqValue, ok := findInMapCaseInsensitive(req, expName)
 		if ok && stringsMatch(reqValue, expValue) {
 			continue
 		}

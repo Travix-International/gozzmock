@@ -128,6 +128,12 @@ func TestExpectationsMatch_HeadersAreEq_True(t *testing.T) {
 		&ExpectationRequest{Headers: Headers{"h1": "hv1"}}))
 }
 
+func TestExpectationsMatch_HeadersAreEqDifferentCase_True(t *testing.T) {
+	assert.True(t, expectationsMatch(
+		&ExpectationRequest{Headers: Headers{"h1": "hv1"}},
+		&ExpectationRequest{Headers: Headers{"H1": "hv1"}}))
+}
+
 func TestExpectationsMatch_HeaderNotEq_False(t *testing.T) {
 	result := expectationsMatch(
 		&ExpectationRequest{Headers: Headers{"h1": "hv1"}},
