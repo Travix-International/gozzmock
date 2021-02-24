@@ -1,0 +1,50 @@
+# https://estafette.io/usage/manifest/
+labels:
+  team: flights
+  language: golang
+
+version:
+  semver:
+    major: 1
+    minor: 6
+
+stages:
+  bake:
+    image: extensions/docker:stable
+    action: build
+    repositories:
+    - travix
+
+  push-to-docker-registry:
+    image: extensions/docker:stable
+    action: push
+    repositories:
+    - travix
+
+  slack-notify:
+    image: extensions/slack-build-status:stable
+    workspace: travix
+    channels:
+    - '#flights-releases'
+    when:
+      status == 'failed'
+
+releases:
+  beta:
+    stages:
+      tag-container-image:
+        image: extensions/docker:stable
+        action: tag
+        repositories:
+        - travix
+        tags:
+        - latest
+
+      slack-notify:
+        image: extensions/slack-build-status:stable
+        workspace: estafette
+        channels:
+        - '#flights-releases'
+        when:
+          status == 'succeeded' ||
+          status == 'failed'

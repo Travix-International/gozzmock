@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.11 as builder
+FROM golang:1.16.0 as builder
 
 # Create the user and group files that will be used in the running container to
 # run the process as an unprivileged user.
@@ -12,9 +12,6 @@ COPY ./ /src
 
 # Set the working directory outside $GOPATH to enable the support for modules.
 WORKDIR /src
-
-# Download modules to local cache
-RUN go mod download
 
 # Set the environment variables for the go command:
 # * CGO_ENABLED=0 to build a statically-linked executable

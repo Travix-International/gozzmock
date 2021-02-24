@@ -8,6 +8,8 @@ import (
 
 	"github.com/Travix-International/gozzmock/expectations"
 	"github.com/Travix-International/gozzmock/httpclient"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -34,6 +36,9 @@ func reportError(w http.ResponseWriter) {
 func (s *gzServer) add(w http.ResponseWriter, r *http.Request) {
 	fLog := log.With().Str("messagetype", "HandlerAddExpectation").Logger()
 
+	span := getSpanWithContextFromRequest(r)
+	defer span.Finish()
+
 	if r.Method != "POST" {
 		fLog.Panic().Msgf("Wrong method %s", r.Method)
 		reportError(w)
@@ -55,6 +60,9 @@ func (s *gzServer) add(w http.ResponseWriter, r *http.Request) {
 func (s *gzServer) remove(w http.ResponseWriter, r *http.Request) {
 	fLog := log.With().Str("messagetype", "HandlerRemoveExpectation").Logger()
 
+	span := getSpanWithContextFromRequest(r)
+	defer span.Finish()
+
 	if r.Method != "POST" {
 		fLog.Panic().Msgf("Wrong method %s", r.Method)
 		reportError(w)
@@ -74,6 +82,9 @@ func (s *gzServer) remove(w http.ResponseWriter, r *http.Request) {
 // HandlerGetExpectations handler parses request and returns global expectations list
 func (s *gzServer) get(w http.ResponseWriter, r *http.Request) {
 	fLog := log.With().Str("messagetype", "HandlerGetExpectations").Logger()
+
+	span := getSpanWithContextFromRequest(r)
+	defer span.Finish()
 
 	if r.Method != "GET" {
 		fLog.Panic().Msgf("Wrong method %s", r.Method)
@@ -102,6 +113,9 @@ func (s *gzServer) root(w http.ResponseWriter, r *http.Request) {
 	// Changing the header map after a call to WriteHeader (or
 	// Write) has no effect unless the modified headers are
 	// trailers.
+
+	span := getSpanWithContextFromRequest(r)
+	defer span.Finish()
 
 	resp := s.filter.Apply(r)
 
@@ -149,6 +163,21 @@ func toZeroLogLevel(logLevel string) zerolog.Level {
 	log.Logger = log.Output(V3FormatWriter{Out: os.Stderr}).
 		With().Str("appname", "gozzmock").Logger()
 	return zlogLevel
+}
+
+func getSpanWithContextFromRequest(r *http.Request) opentracing.Span {
+
+	// retrieve span context from upstream caller if available
+	tracingCtx, _ := opentracing.GlobalTracer().Extract(opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(r.Header))
+
+	// create a span for the http request
+	span := opentracing.StartSpan(fmt.Sprintf("HTTP %v %v", r.Method, r.URL.Path), ext.RPCServerOption(tracingCtx))
+
+	ext.SpanKindRPCServer.Set(span)
+	ext.HTTPMethod.Set(span, r.Method)
+	ext.HTTPUrl.Set(span, r.URL.String())
+
+	return span
 }
 
 func (s *gzServer) serve(port string) {
